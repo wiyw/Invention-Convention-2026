@@ -1,0 +1,17 @@
+{
+  "image_path": "C:/Users/Greyson/Code/InventionConvention2026/yolo26n/iCloud Photos from Greyson W/IMG_2040.JPEG",
+  "image_name": "IMG_2040.JPEG",
+  "width": 480,
+  "height": 640,
+  "detections": [
+    {
+      "id": 0,
+      "label": "person",
+      "class_id": 0,
+      "confidence": 0.9,
+      "bbox": {"x1": 200, "y1": 150, "x2": 280, "y2": 350},
+      "bbox_xywh": {"cx": 240.0, "cy": 250.0, "w": 80.0, "h": 200.0},
+      "bbox_norm": {"cx": 0.5, "cy": 0.5, "w": 0.16666666666666666, "h": 0.3125}
+    }
+  ]
+}
