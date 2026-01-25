@@ -41,8 +41,10 @@ class CameraOnlyAITester:
             'timestamp': 0
         }
         
-        # TinyYOLO input size
+        # TinyYOLO input size (for AI processing)
         self.input_size = (160, 120)
+        # Display resolution (reasonable for testing)
+        self.display_size = (800, 600)
         
         print("Camera-Only AI Tester Initialized")
         print(f"Camera ID: {camera_id}")
@@ -56,9 +58,9 @@ class CameraOnlyAITester:
             if not self.camera.isOpened():
                 raise Exception(f"Cannot open camera {self.camera_id}")
             
-            # Set camera properties
-            self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-            self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            # Set camera properties (reasonable size for testing)
+            self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 800)
+            self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
             self.camera.set(cv2.CAP_PROP_FPS, 30)
             
             # Test camera
@@ -74,15 +76,34 @@ class CameraOnlyAITester:
             print(f"❌ Camera initialization failed: {e}")
             return False
     
-    def initialize_model(self, model_path="yolo26n/yolo26n.pt"):
+    def initialize_model(self, model_path=None):
         """Initialize YOLO26n model"""
         try:
-            if os.path.exists(model_path):
-                self.model = YOLO(model_path)
-                print(f"✅ YOLO26n model loaded: {model_path}")
-            else:
-                print(f"❌ Model not found: {model_path}")
+            # Try multiple possible model paths
+            possible_paths = [
+                "yolo26n.pt",  # Project root
+                "../yolo26n.pt",  # From testing directory
+                "../../yolo26n.pt",  # From deeper directory
+                "yolo26n/yolo26n.pt",  # Original location
+                "../yolo26n/yolo26n.pt",  # From testing dir
+                os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "yolo26n.pt"),  # Project root
+            ]
+            
+            model_found = False
+            for path in possible_paths:
+                if os.path.exists(path):
+                    self.model = YOLO(path)
+                    print(f"✅ YOLO26n model loaded: {path}")
+                    model_found = True
+                    break
+            
+            if not model_found:
+                print("❌ YOLO26n model not found in any location")
+                print("  Checked paths:")
+                for path in possible_paths:
+                    print(f"    - {path}")
                 print("  Using placeholder detection for testing")
+                print("  To fix: Copy yolo26n.pt to project root or run from original directory")
                 self.model = None
             return True
             
@@ -220,13 +241,13 @@ class CameraOnlyAITester:
             color = (0, 255, 0) if conf > 0.5 else (0, 165, 255)
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
             
-            # Draw label and confidence
-            text = f"{label} {conf:.2f}"
-            label_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)[0]
-            cv2.rectangle(frame, (x1, y1 - label_size[1] - 10), 
+            # Draw label and confidence (very compact)
+            text = f"{label[:3]}"  # Very short label
+            label_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.3, 1)[0]
+            cv2.rectangle(frame, (x1, y1 - label_size[1] - 4), 
                         (x1 + label_size[0], y1), color, -1)
-            cv2.putText(frame, text, (x1, y1 - 5), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+            cv2.putText(frame, text, (x1, y1 - 2), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 255), 1)
         
         # Draw decision overlay
         overlay = frame.copy()
@@ -296,6 +317,9 @@ class CameraOnlyAITester:
             # Draw results
             result_frame = self.draw_detections(display_frame, detections, action, confidence)
             
+            # Resize for better display
+            result_frame = cv2.resize(result_frame, self.display_size, interpolation=cv2.INTER_LINEAR)
+            
             # Add performance metrics
             fps = self.fps_history[-1] if self.fps_history else 0
             cv2.putText(result_frame, f"FPS: {fps:.1f}", (10, result_frame.shape[0] - 50), 
@@ -305,8 +329,8 @@ class CameraOnlyAITester:
             cv2.putText(result_frame, f"Detect: {detection_time:.0f}ms | Decision: {decision_time:.0f}ms", 
                        (10, result_frame.shape[0] - 75), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
             
-            # Display result
-            cv2.imshow('Arduino UNO Q4GB AI Camera Test', result_frame)
+            # Display result with larger window
+            cv2.imshow('Arduino UNO Q4GB AI Camera Test - High Resolution', result_frame)
             
             # Handle keyboard input
             key = cv2.waitKey(1) & 0xFF
@@ -367,14 +391,15 @@ class CameraOnlyAITester:
                     
                     # Show live feedback
                     result_frame = self.draw_detections(display_frame, detections, action, confidence)
+                    result_frame = cv2.resize(result_frame, self.display_size, interpolation=cv2.INTER_LINEAR)
                     cv2.putText(result_frame, f"TEST: {scenario_name}", (10, 100), 
                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-                    cv2.imshow('Test Sequence', result_frame)
+                    cv2.imshow('Test Sequence - High Resolution', result_frame)
                     
                     if cv2.waitKey(1) & 0xFF == ord('q'):
                         break
             
-            cv2.destroyWindow('Test Sequence')
+            cv2.destroyWindow('Test Sequence - High Resolution')
             
             # Analyze results
             if results:

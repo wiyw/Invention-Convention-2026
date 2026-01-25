@@ -20,7 +20,8 @@ class CameraAIPipeline:
         self.running = False
         
         # Configuration
-        self.input_size = (160, 120)
+        self.input_size = (160, 120)  # For AI processing
+        self.display_size = (800, 600)  # Reasonable display size
         self.fps_target = 15
         
         # Mock sensor data (since ultrasonic not used)
@@ -43,9 +44,9 @@ class CameraAIPipeline:
             print(f"❌ Cannot open camera {self.camera_id}")
             return False
         
-        # Set camera properties
-        self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        # Set camera properties (reasonable size for testing)
+        self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 800)
+        self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
         self.camera.set(cv2.CAP_PROP_FPS, self.fps_target)
         
         # Test camera
@@ -54,20 +55,36 @@ class CameraAIPipeline:
             print("❌ Camera test failed")
             return False
         
-        # Try to load YOLO model
-        model_path = "yolo26n/yolo26n.pt"
-        if os.path.exists(model_path):
+        # Try to load YOLO model from multiple locations
+        possible_paths = [
+            "yolo26n.pt",
+            "../yolo26n.pt", 
+            "../../yolo26n.pt",
+            "yolo26n/yolo26n.pt",
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "yolo26n.pt")
+        ]
+        
+        model_found = False
+        for model_path in possible_paths:
+            if os.path.exists(model_path):
             try:
                 from ultralytics import YOLO
                 self.model = YOLO(model_path)
-                print(f"✅ YOLO26n model loaded")
+                print(f"✅ YOLO26n model loaded: {model_path}")
+                model_found = True
+                break
             except Exception as e:
                 print(f"⚠️  YOLO loading failed: {e}")
                 print("Using placeholder detection")
                 self.model = None
-        else:
-            print("⚠️  YOLO model not found")
-            print("Using placeholder detection")
+        
+        if not model_found:
+            print("❌ YOLO model not found in any location")
+            print("  Checked paths:")
+            for path in possible_paths:
+                print(f"    - {path}")
+            print("  To fix: Copy yolo26n.pt to project root")
+            print("  Using placeholder detection for testing")
             self.model = None
         
         print(f"✅ Camera {self.camera_id} initialized")
@@ -203,9 +220,8 @@ class CameraAIPipeline:
     
     def draw_results(self, frame, result):
         """Draw detection results on frame"""
-        # Scale frame back to original size
-        h_orig, w_orig = frame.shape[:2]
-        display_frame = cv2.resize(frame, (640, 480))
+        # Scale frame back to display size
+        display_frame = cv2.resize(frame, self.display_size, interpolation=cv2.INTER_LINEAR)
         
         # Draw detections
         for detection in result['detections']:
@@ -214,14 +230,15 @@ class CameraAIPipeline:
             conf = detection['confidence']
             
             # Convert normalized coordinates to display frame
-            x1 = int(bbox_norm['cx'] * 640 - bbox_norm['w'] * 320)
-            y1 = int(bbox_norm['cy'] * 480 - bbox_norm['h'] * 240)
-            x2 = int(bbox_norm['cx'] * 640 + bbox_norm['w'] * 320)
-            y2 = int(bbox_norm['cy'] * 480 + bbox_norm['h'] * 240)
+            scale_x, scale_y = self.display_size[0], self.display_size[1]
+            x1 = int(bbox_norm['cx'] * scale_x - bbox_norm['w'] * scale_x / 2)
+            y1 = int(bbox_norm['cy'] * scale_y - bbox_norm['h'] * scale_y / 2)
+            x2 = int(bbox_norm['cx'] * scale_x + bbox_norm['w'] * scale_x / 2)
+            y2 = int(bbox_norm['cy'] * scale_y + bbox_norm['h'] * scale_y / 2)
             
             # Clamp to frame bounds
             x1, y1 = max(0, x1), max(0, y1)
-            x2, y2 = min(639, x2), min(479, y2)
+            x2, y2 = min(scale_x - 1, x2), min(scale_y - 1, y2)
             
             # Draw bounding box
             color = (0, 255, 0) if conf > 0.5 else (0, 165, 255)
@@ -234,7 +251,7 @@ class CameraAIPipeline:
         
         # Draw decision overlay
         overlay = display_frame.copy()
-        cv2.rectangle(overlay, (0, 0), (640, 80), (0, 0, 0), -1)
+        cv2.rectangle(overlay, (0, 0), (scale_x, 80), (0, 0, 0), -1)
         display_frame = cv2.addWeighted(display_frame, 0.7, overlay, 0.3, 0)
         
         # Decision text
@@ -242,13 +259,16 @@ class CameraAIPipeline:
         color = (0, 255, 0) if action == 'FORWARD' else (0, 165, 255) if action in ['TURN_LEFT', 'TURN_RIGHT'] else (0, 0, 255)
         
         cv2.putText(display_frame, f"Action: {action}", (10, 25), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+                   cv2.FONT_HERSHEY_SIMPLEX, int(0.7 * scale_factor), color, 2)
         cv2.putText(display_frame, f"Confidence: {result['confidence']:.2f}", (10, 50), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+                   cv2.FONT_HERSHEY_SIMPLEX, int(0.6 * scale_factor), (255, 255, 255), 2)
         
         # Performance metrics
+        # Performance metrics
+        # Performance metrics (scaled for high resolution)
+        scale_factor = self.display_size[1] / 480  # Scale text for higher resolution
         cv2.putText(display_frame, f"Detect: {result['detection_time_ms']:.0f}ms | Decision: {result['decision_time_ms']:.0f}ms", 
-                   (10, 480 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1)
+                   (10, scale_y - 10), cv2.FONT_HERSHEY_SIMPLEX, int(0.4 * scale_factor), (255, 255, 0), 1)
         
         return display_frame
     
@@ -285,7 +305,7 @@ class CameraAIPipeline:
             # Display results
             if show_display:
                 display_frame = self.draw_results(frame, result)
-                cv2.imshow('Arduino UNO Q4GB AI Pipeline', display_frame)
+                cv2.imshow('Arduino UNO Q4GB AI Pipeline - High Resolution', display_frame)
                 
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord('q'):
