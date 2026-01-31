@@ -148,7 +148,7 @@ python python_tools\testing\camera_only_tester.py --camera 2
 ### Dependencies Issues:
 ```cmd
 # Reinstall packages
-pip install --upgrade opencv-python ultralytics numpy
+py -m pip install --upgrade opencv-python ultralytics numpy
 
 # Check installation
 python -c "import cv2; print('OpenCV:', cv2.__version__)"

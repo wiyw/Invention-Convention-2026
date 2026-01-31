@@ -29,7 +29,7 @@ This implementation combines YOLO26n object detection, Qwen2.5-0.5B-Instruct rea
 
 ### 1. Python Dependencies
 ```bash
-pip install opencv-python ultralytics pyserial numpy transformers torch
+py -m pip install opencv-python ultralytics pyserial numpy transformers torch
 ```
 
 ### 2. Arduino Setup

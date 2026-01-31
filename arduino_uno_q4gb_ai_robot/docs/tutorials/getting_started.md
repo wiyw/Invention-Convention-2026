@@ -170,13 +170,13 @@ python safety_demo.py --simulate
 **Solution**: 
 1. Install Microsoft C++ Build Tools
 2. Run Command Prompt as Administrator
-3. Use `--user` flag: `pip install --user <package>`
+3. Use `--user` flag: `py -m pip install --user <package>`
 
 ### Testing Issues
 **Problem**: Simulation tests fail
 **Solution**: 
 1. Check Python version (requires 3.9+)
-2. Install missing dependencies: `pip install -r requirements.txt`
+2. Install missing dependencies: `py -m pip install -r requirements.txt`
 3. Run with `--check-deps` flag
 
 **Problem**: Low test scores

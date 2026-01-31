@@ -55,19 +55,18 @@ class CameraAIPipeline:
             print("❌ Camera test failed")
             return False
         
-        # Try to load YOLO model from multiple locations
+        # Use standardized model paths
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         possible_paths = [
-            "yolo26n.pt",
-            "../yolo26n.pt", 
-            "../../yolo26n.pt",
-            "yolo26n/yolo26n.pt",
-            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "yolo26n.pt")
+            os.path.join(project_root, "models", "yolo26n.pt"),  # Standardized location
+            os.path.join(project_root, "yolo26n.pt"),  # Fallback to project root
+            "yolo26n.pt"  # Current directory fallback
         ]
         
         model_found = False
         for model_path in possible_paths:
             if os.path.exists(model_path):
-            try:
+                try:
                 from ultralytics import YOLO
                 self.model = YOLO(model_path)
                 print(f"✅ YOLO26n model loaded: {model_path}")

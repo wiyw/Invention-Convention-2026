@@ -29,10 +29,10 @@
 
 #### 2. Required Python Packages
 ```cmd
-pip install opencv-python ultralytics pyserial numpy matplotlib
-pip install torch torchvision tensorflow
-pip install pillow scipy scikit-learn tqdm
-pip install pyyaml requests psutil
+py -m pip install opencv-python ultralytics pyserial numpy matplotlib
+py -m pip install torch torchvision tensorflow
+py -m pip install pillow scipy scikit-learn tqdm
+py -m pip install pyyaml requests psutil
 ```
 
 #### 3. Arduino IDE
@@ -120,7 +120,7 @@ python -m venv venv
 venv\Scripts\activate
 
 # Install requirements
-pip install -r requirements.txt
+py -m pip install -r requirements.txt
 ```
 
 ## 🎯 Getting Started
@@ -205,9 +205,9 @@ Solution:
 ```
 Error: "numpy version mismatch"
 Solution:
-pip uninstall opencv-python numpy
-pip install numpy==1.24.0
-pip install opencv-python
+py -m pip uninstall opencv-python numpy
+py -m pip install numpy==1.24.0
+py -m pip install opencv-python
 ```
 
 ### Performance Issues

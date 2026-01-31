@@ -1,5 +1,0 @@
-@echo off 
-echo Running 30-second benchmark... 
-cd python_tools\testing 
-python camera_only_tester.py --benchmark 30 
-pause 

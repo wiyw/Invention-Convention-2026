@@ -3,5 +3,6 @@ display_resolution=800x600
 input_resolution=160x120 
 fps_target=15 
 yolo_model_search=true 
+qwen_model_search=true 
 mock_ultrasonic=true 
-setup_version=final 
+setup_version=final_yolo_qwen 

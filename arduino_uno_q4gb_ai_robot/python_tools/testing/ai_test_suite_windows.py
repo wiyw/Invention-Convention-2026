@@ -24,7 +24,7 @@ try:
     import ultralytics
 except ImportError as e:
     print(f"Missing dependency: {e}")
-    print("Run: pip install -r requirements.txt")
+        print("Run: py -m pip install -r requirements.txt")
     sys.exit(1)
 
 class WindowsAITestSimulator:
@@ -530,7 +530,7 @@ def check_windows_dependencies():
     
     if issues:
         print(f"\n❌ Missing dependencies: {', '.join(issues)}")
-        print("Run: pip install -r requirements.txt")
+    print("Run: py -m pip install -r requirements.txt")
         return False
     else:
         print("\n✅ All dependencies installed!")
