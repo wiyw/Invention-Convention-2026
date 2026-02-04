@@ -1,0 +1,43 @@
+//Greyson this is just for copy-pasting code for ultrasonic, Not sure if it will work: my arduino is broken :(
+//Hope this helps!
+
+#include <NewPing.h>
+
+// Sensor Pin Mapping
+#define L_TRIG 5
+#define L_ECHO 6
+#define R_TRIG 3
+#define R_ECHO 4
+#define B_TRIG 9
+#define B_ECHO 8
+
+#define MAX_DIST 200 
+
+NewPing sonar[3] = {
+  NewPing(L_TRIG, L_ECHO, MAX_DIST),
+  NewPing(R_TRIG, R_ECHO, MAX_DIST),
+  NewPing(B_TRIG, B_ECHO, MAX_DIST)
+};
+
+void setup() {
+  // AI usually prefers high baud rates for faster data processing
+  Serial.begin(115200); 
+}
+
+void loop() {
+  // Format: Left,Right,Back
+  Serial.print(getDist(0));
+  Serial.print(",");
+  Serial.print(getDist(1));
+  Serial.print(",");
+  Serial.println(getDist(2));
+  
+  // A small delay so the AI isn't overwhelmed with identical data
+  delay(50); 
+}
+
+int getDist(int id) {
+  delay(33); // Essential timing for the HC-SR04 hardware
+  int cm = sonar[id].ping_cm();
+  return (cm == 0) ? MAX_DIST : cm;
+}
