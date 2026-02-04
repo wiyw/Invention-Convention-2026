@@ -1,0 +1,83 @@
+{
+  "timestamp": "2026-02-03 20:55:01",
+  "total_tests": 12,
+  "passed_tests": 0,
+  "failed_tests": 12,
+  "success_rate": 0.0,
+  "test_results": {
+    "Installation Directory Check": {
+      "status": "FAILED",
+      "duration": 0.00015401840209960938,
+      "critical": true,
+      "message": "Test failed"
+    },
+    "Virtual Environment Test": {
+      "status": "FAILED",
+      "duration": 0.0001628398895263672,
+      "critical": true,
+      "message": "Test failed"
+    },
+    "Python Packages Test": {
+      "status": "FAILED",
+      "duration": 0.0017693042755126953,
+      "critical": true,
+      "message": "Test failed"
+    },
+    "AI Framework Test": {
+      "status": "FAILED",
+      "duration": 0.0001850128173828125,
+      "critical": true,
+      "message": "Test failed"
+    },
+    "Hardware Detection Test": {
+      "status": "FAILED",
+      "duration": 0.00021910667419433594,
+      "critical": true,
+      "message": "Test failed"
+    },
+    "Model Files Test": {
+      "status": "FAILED",
+      "duration": 0.0001323223114013672,
+      "critical": true,
+      "message": "Test failed"
+    },
+    "Startup Script Test": {
+      "status": "FAILED",
+      "duration": 0.00010514259338378906,
+      "critical": true,
+      "message": "Test failed"
+    },
+    "System Integration Test": {
+      "status": "FAILED",
+      "duration": 0.000156402587890625,
+      "critical": true,
+      "message": "Test failed"
+    },
+    "Performance Benchmark Test": {
+      "status": "FAILED",
+      "duration": 0.0001125335693359375,
+      "critical": true,
+      "message": "Test failed"
+    },
+    "AI Inference Test": {
+      "status": "FAILED",
+      "duration": 0.0019428730010986328,
+      "critical": true,
+      "message": "Test failed"
+    },
+    "Memory Usage Test": {
+      "status": "FAILED",
+      "duration": 0.005084991455078125,
+      "critical": true,
+      "message": "Test failed"
+    },
+    "Configuration Files Test": {
+      "status": "FAILED",
+      "duration": 0.0001811981201171875,
+      "critical": true,
+      "message": "Test failed"
+    }
+  },
+  "installation_dir": "C:\\Users\\Greyson\\arduino_q4gb_ai_robot_phase3",
+  "arduino_uno_q4gb_phase3": true
+}
