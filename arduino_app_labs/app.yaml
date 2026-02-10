@@ -1,0 +1,45 @@
+# Arduino App Labs Ultrasonic Trash Collector
+name: ultrasonic-trash-collector
+version: 1.0.0
+description: Camera-free trash collection robot using 5 ultrasonic sensors
+author: Invention Convention 2026
+category: Robotics
+license: MIT
+
+# Arduino Configuration
+arduino:
+  board: uno-r4
+  framework: arduino
+  
+# Python Requirements
+python:
+  version: ">=3.8"
+  packages:
+    - numpy>=1.24.0
+    - opencv-python>=4.8.0
+    - pyserial>=3.5
+
+# Hardware Requirements
+hardware:
+  - arduino-uno-q4gb
+  - arduino-uno-r4
+  - ultrasonic-sensors
+  - dc-motors
+  - servo-motor
+
+# Features
+features:
+  - ultrasonic-sensing
+  - real-time-detection
+  - 360-degree-coverage
+  - arduino-integration
+  - visualization
+
+# App Structure for Arduino App Labs
+structure:
+  python: "./"
+  sketch: "./"
+  assets: "./"
+
+# Main entry point
+main: "main.py"

@@ -1,0 +1,20 @@
+name: test-app-labs
+version: 1.0.0
+description: Test Arduino App Labs structure
+author: Test
+category: Test
+
+arduino:
+  board: uno-r4
+  framework: arduino
+
+python:
+  version: ">=3.8"
+  packages: []
+
+structure:
+  python: "./"
+  sketch: "sketch/"
+  assets: "./"
+
+main: "main.py"

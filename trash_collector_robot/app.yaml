@@ -1,0 +1,20 @@
+name: trash-collector-robot
+version: 1.0.0
+description: 3-Sensor Ultrasonic Trash Collector - Front, Left 45°, Right 45°
+author: Invention Convention 2026
+category: Robotics
+
+arduino:
+  board: uno-r4
+  framework: arduino
+
+python:
+  version: ">=3.8"
+  packages: []
+
+structure:
+  python: "./"
+  sketch: "./"
+  assets: "./"
+
+main: "main.py"
