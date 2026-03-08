@@ -1,0 +1,2085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>🫧 OmniScrub — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+:root {
+  --bg: #0a0c10;
+  --panel: #10141c;
+  --panel2: #161b26;
+  --border: #1e2a3a;
+  --accent: #00e5ff;
+  --accent2: #7c3aed;
+  --accent3: #f59e0b;
+  --green: #10b981;
+  --red: #ef4444;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --font: 'Syne', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+#main{display:flex;flex:1;overflow:hidden;}
+
+/* TOP BAR */
+#topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;height:52px;
+  background:var(--panel);border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+#topbar .logo{font-size:1.2rem;font-weight:800;letter-spacing:-.02em;color:var(--accent);}
+#topbar .logo span{color:var(--text);opacity:.5;}
+#topbar .status-row{display:flex;gap:12px;align-items:center;}
+.status-pill{
+  font-family:var(--mono);font-size:.7rem;padding:3px 10px;border-radius:20px;
+  border:1px solid var(--border);display:flex;align-items:center;gap:6px;
+}
+.status-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--muted);}
+.status-pill.online .dot{background:var(--green);box-shadow:0 0 8px var(--green);}
+.status-pill.warn .dot{background:var(--accent3);box-shadow:0 0 8px var(--accent3);}
+.status-pill.err .dot{background:var(--red);box-shadow:0 0 8px var(--red);}
+#topbar .toolbar-btns{display:flex;gap:8px;}
+.tbtn{
+  background:var(--panel2);border:1px solid var(--border);color:var(--text);
+  font-family:var(--font);font-size:.75rem;font-weight:600;padding:5px 14px;
+  border-radius:6px;cursor:pointer;transition:all .15s;
+}
+.tbtn:hover{border-color:var(--accent);color:var(--accent);}
+.tbtn.danger{border-color:var(--red);color:var(--red);}
+.tbtn.primary{background:var(--accent);color:#000;border-color:var(--accent);}
+.tbtn.primary:hover{background:#00c4dc;}
+
+/* SIDEBAR */
+#sidebar{
+  width:200px;flex-shrink:0;
+  background:var(--panel);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+}
+.nav-section{padding:14px 12px 6px;font-family:var(--mono);font-size:.62rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 16px;cursor:pointer;
+  font-size:.82rem;font-weight:600;color:var(--muted);
+  transition:all .15s;border-left:3px solid transparent;
+}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,.03);}
+.nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(0,229,255,.05);}
+.nav-item .badge{
+  margin-left:auto;font-family:var(--mono);font-size:.6rem;
+  background:var(--accent2);color:#fff;padding:1px 6px;border-radius:10px;
+}
+.nav-icon{font-size:1rem;width:20px;text-align:center;}
+#sidebar .bot-summary{
+  margin-top:auto;padding:14px;border-top:1px solid var(--border);
+}
+.bot-card{
+  background:var(--panel2);border:1px solid var(--border);border-radius:8px;
+  padding:10px;
+}
+.bot-card .name{font-weight:700;font-size:.82rem;color:var(--accent);}
+.bot-card .stats{margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+.bot-card .stat{font-family:var(--mono);font-size:.62rem;color:var(--muted);}
+.bot-card .stat b{color:var(--text);}
+
+/* CONTENT */
+#content{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.tab-pane{display:none;flex:1;overflow:hidden;}
+.tab-pane.active{display:flex;flex-direction:column;}
+
+/* ===== DASHBOARD TAB ===== */
+#tab-dashboard{flex-direction:column;overflow-y:auto;padding:16px;gap:14px;background:var(--bg);}
+.dash-row{display:grid;gap:14px;}
+.dash-row.r3{grid-template-columns:repeat(3,1fr);}
+.dash-row.r2{grid-template-columns:1fr 1fr;}
+.dash-row.r-main{grid-template-columns:1.5fr 1fr;align-items:start;}
+.dash-row.r4z{grid-template-columns:repeat(4,1fr);}
+.dcard{
+  background:var(--panel);border:1px solid var(--border);border-radius:10px;
+  padding:14px;position:relative;overflow:hidden;
+}
+.dcard::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  opacity:0;transition:.3s;
+}
+.dcard:hover::before{opacity:1;}
+.dcard .card-title{
+  font-family:var(--mono);font-size:.65rem;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;
+  display:flex;align-items:center;gap:6px;
+}
+.dcard .big-val{font-size:2rem;font-weight:800;color:var(--accent);line-height:1;}
+.dcard .big-label{font-size:.7rem;color:var(--muted);margin-top:2px;}
+.dcard .delta{font-family:var(--mono);font-size:.65rem;margin-top:6px;}
+.dcard .delta.up{color:var(--green);}
+.dcard .delta.down{color:var(--red);}
+.prog-bar{height:5px;background:var(--border);border-radius:3px;margin-top:8px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .5s;}
+.prog-fill.warn{background:var(--accent3);}
+.prog-fill.danger{background:var(--red);}
+.prog-fill.ok{background:var(--green);}
+
+/* Minimap */
+#minimap-canvas{width:100%;height:180px;background:var(--panel2);border-radius:8px;position:relative;overflow:hidden;border:1px solid var(--border);}
+#minimap-canvas canvas{width:100%;height:100%;}
+
+/* Dashboard camera */
+#dash-cam-wrap{
+  position:relative;background:#000;border-radius:8px;overflow:hidden;
+  height:260px;border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+}
+/* Scaled iframe wrapper — makes Edge Impulse /embed fit inside any container */
+.iframe-scale-wrap{
+  position:relative;width:100%;overflow:hidden;background:#000;border-radius:6px;
+}
+.iframe-scale-wrap iframe{
+  position:absolute;top:0;left:0;
+  transform-origin:top left;
+  border:none;
+}
+.cam-corner{position:absolute;width:14px;height:14px;border-color:var(--accent);border-style:solid;opacity:.7;}
+.cam-corner.tl{top:8px;left:8px;border-width:2px 0 0 2px;}
+.cam-corner.tr{top:8px;right:8px;border-width:2px 2px 0 0;}
+.cam-corner.bl{bottom:8px;left:8px;border-width:0 0 2px 2px;}
+.cam-corner.br{bottom:8px;right:8px;border-width:0 2px 2px 0;}
+.cam-label{position:absolute;top:8px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:.6rem;background:rgba(0,0,0,.6);color:var(--accent);padding:2px 8px;border-radius:4px;}
+.cam-fps{position:absolute;bottom:8px;right:8px;font-family:var(--mono);font-size:.6rem;background:rgba(0,0,0,.6);color:var(--green);padding:2px 6px;border-radius:4px;}
+.cam-placeholder{color:var(--muted);font-size:.8rem;text-align:center;}
+.cam-placeholder button{margin-top:10px;background:var(--accent);color:#000;border:none;padding:6px 14px;border-radius:6px;font-family:var(--font);font-weight:700;cursor:pointer;}
+
+/* Activity feed */
+.activity-feed{max-height:200px;overflow-y:auto;}
+.activity-item{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border);font-size:.75rem;}
+.activity-item:last-child{border-bottom:none;}
+.activity-item .a-icon{font-size:.9rem;flex-shrink:0;}
+.activity-item .a-time{font-family:var(--mono);font-size:.62rem;color:var(--muted);flex-shrink:0;}
+.activity-item .a-text{color:var(--text);}
+.activity-item .a-tag{margin-left:auto;font-family:var(--mono);font-size:.58rem;padding:1px 6px;border-radius:4px;flex-shrink:0;}
+.a-tag.ok{background:rgba(16,185,129,.15);color:var(--green);}
+.a-tag.warn{background:rgba(245,158,11,.15);color:var(--accent3);}
+.a-tag.info{background:rgba(0,229,255,.1);color:var(--accent);}
+
+/* Health grid */
+.health-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;}
+.health-item{background:var(--panel2);border-radius:6px;padding:8px;}
+.health-item .h-label{font-family:var(--mono);font-size:.6rem;color:var(--muted);}
+.health-item .h-val{font-size:1.1rem;font-weight:700;margin-top:2px;}
+.health-item .h-val.ok{color:var(--green);}
+.health-item .h-val.warn{color:var(--accent3);}
+.health-item .h-val.bad{color:var(--red);}
+
+/* Sensor rows */
+.sensor-list{display:flex;flex-direction:column;gap:6px;margin-top:4px;}
+.sensor-row{display:flex;align-items:center;gap:10px;font-size:.75rem;}
+.sensor-row .s-name{width:80px;color:var(--muted);font-family:var(--mono);font-size:.65rem;}
+.sensor-row .s-bar{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+.sensor-row .s-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .4s;}
+.sensor-row .s-val{width:40px;text-align:right;font-family:var(--mono);font-size:.65rem;}
+
+/* ===== MAP TAB ===== */
+#tab-map{position:relative;overflow:hidden;}
+#map-canvas{width:100%;height:100%;background:var(--bg);cursor:crosshair;}
+#map-tools{
+  position:absolute;top:14px;left:14px;
+  display:flex;flex-direction:column;gap:6px;z-index:10;
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:10px;padding:8px;
+}
+.map-tool-sep{height:1px;background:var(--border);margin:2px 0;}
+.map-tool-btn{
+  width:34px;height:34px;background:var(--panel2);border:1px solid var(--border);
+  border-radius:7px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:.95rem;transition:all .15s;color:var(--text);
+  position:relative;
+}
+.map-tool-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,.07);}
+.map-tool-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,.13);box-shadow:0 0 8px rgba(0,229,255,.2);}
+.map-tool-btn .tip{
+  position:absolute;left:44px;top:50%;transform:translateY(-50%);
+  background:var(--panel2);border:1px solid var(--border);border-radius:5px;
+  padding:3px 8px;font-family:var(--mono);font-size:.6rem;white-space:nowrap;
+  pointer-events:none;opacity:0;transition:.15s;z-index:20;
+}
+.map-tool-btn:hover .tip{opacity:1;}
+#map-info{
+  position:absolute;bottom:14px;left:14px;right:14px;
+  background:var(--panel);border:1px solid var(--border);border-radius:10px;
+  padding:10px 16px;display:flex;gap:20px;align-items:center;z-index:10;
+  flex-wrap:wrap;
+}
+#map-info .mi{font-family:var(--mono);font-size:.65rem;}
+#map-info .mi span{color:var(--muted);}
+#map-btns{position:absolute;top:14px;right:14px;display:flex;gap:8px;z-index:10;}
+#path-panel{
+  position:absolute;top:14px;left:70px;right:160px;
+  background:var(--panel);border:1px solid var(--border);border-radius:10px;
+  padding:8px 14px;display:none;align-items:center;gap:12px;z-index:10;
+  font-family:var(--mono);font-size:.68rem;
+}
+#path-panel.visible{display:flex;}
+#path-waypoint-list{
+  display:flex;gap:6px;flex-wrap:wrap;flex:1;
+}
+.wp-tag{
+  background:rgba(124,58,237,.2);border:1px solid var(--accent2);
+  color:var(--accent2);border-radius:4px;padding:1px 7px;font-size:.6rem;cursor:pointer;
+}
+.wp-tag:hover{background:rgba(239,68,68,.15);border-color:var(--red);color:var(--red);}
+
+/* ===== VISION TAB ===== */
+#tab-vision{overflow-y:auto;padding:16px;gap:14px;flex-direction:column;}
+#vision-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;}
+.vision-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;transition:border-color .2s;}
+.vision-card:hover{border-color:var(--accent);}
+.vision-card .vc-label{font-weight:700;font-size:.85rem;}
+.vision-card .vc-conf{font-family:var(--mono);font-size:.7rem;color:var(--accent);margin-top:2px;}
+.vision-card .vc-bar{height:4px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden;}
+.vision-card .vc-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .4s;}
+.vision-card .vc-meta{font-size:.65rem;color:var(--muted);margin-top:6px;font-family:var(--mono);}
+#vis-controls{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;}
+#vis-controls input[type=range]{accent-color:var(--accent);}
+#detection-log{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px;max-height:200px;overflow-y:auto;margin-top:4px;}
+.log-line{font-family:var(--mono);font-size:.65rem;color:var(--muted);padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.log-line span{color:var(--accent);}
+
+/* ===== HISTORY TAB ===== */
+#tab-history{overflow-y:auto;padding:16px;flex-direction:column;gap:14px;}
+.hist-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:4px;}
+.hist-stat-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;}
+.hist-stat-card .hsv{font-size:1.8rem;font-weight:800;color:var(--accent);}
+.hist-stat-card .hsl{font-size:.7rem;color:var(--muted);font-family:var(--mono);margin-top:2px;}
+.session-list{display:flex;flex-direction:column;gap:10px;}
+.session-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;align-items:center;gap:16px;}
+.session-card .s-num{font-family:var(--mono);font-size:1.2rem;font-weight:700;color:var(--accent2);min-width:36px;}
+.session-card .s-info{flex:1;}
+.session-card .s-date{font-weight:700;font-size:.82rem;}
+.session-card .s-meta{font-size:.7rem;color:var(--muted);font-family:var(--mono);margin-top:3px;}
+.session-card .s-tags{display:flex;gap:6px;margin-top:6px;}
+.s-badge{font-family:var(--mono);font-size:.6rem;padding:2px 7px;border-radius:4px;background:rgba(0,229,255,.1);color:var(--accent);}
+
+/* ===== ADMIN TAB ===== */
+#tab-admin{overflow-y:auto;padding:16px;flex-direction:column;gap:14px;}
+#admin-lock{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:16px;}
+#admin-lock .lock-icon{font-size:3rem;}
+#admin-lock input{
+  background:var(--panel2);border:1px solid var(--border);color:var(--text);
+  font-family:var(--mono);font-size:.85rem;padding:10px 16px;border-radius:8px;width:280px;
+}
+#admin-lock input:focus{outline:none;border-color:var(--accent);}
+#admin-panel{display:none;flex-direction:column;gap:14px;}
+.admin-section{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;}
+.admin-section h3{font-size:.82rem;font-weight:700;margin-bottom:12px;color:var(--accent);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;}
+.ctrl-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.ctrl-btn{background:var(--panel2);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-weight:700;font-size:.8rem;padding:10px;border-radius:8px;cursor:pointer;transition:all .2s;text-align:center;}
+.ctrl-btn:hover{border-color:var(--accent);color:var(--accent);}
+.ctrl-btn.go{background:rgba(16,185,129,.15);border-color:var(--green);color:var(--green);}
+.ctrl-btn.stop-btn{background:rgba(239,68,68,.15);border-color:var(--red);color:var(--red);}
+.dpad{display:grid;grid-template-columns:repeat(3,46px);gap:6px;margin:0 auto;width:fit-content;}
+.dpad-btn{width:46px;height:46px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.1rem;transition:all .15s;}
+.dpad-btn:hover{border-color:var(--accent);background:rgba(0,229,255,.1);}
+.dpad-btn:active{transform:scale(.92);}
+.dpad-empty{width:46px;height:46px;}
+.form-row{display:flex;align-items:center;gap:12px;margin-bottom:8px;}
+.form-row label{font-size:.75rem;color:var(--muted);width:140px;flex-shrink:0;}
+.form-row input,.form-row select{flex:1;background:var(--panel2);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.75rem;padding:6px 10px;border-radius:6px;}
+.form-row input:focus,.form-row select:focus{outline:none;border-color:var(--accent);}
+.form-row input[type=range]{padding:0;}
+.servo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.servo-card{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px;}
+.servo-card .sc-name{font-family:var(--mono);font-size:.65rem;color:var(--muted);margin-bottom:6px;}
+.servo-card .sc-btns{display:flex;gap:6px;}
+.servo-card .sc-btn{flex:1;background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:.72rem;font-weight:600;padding:5px;border-radius:5px;cursor:pointer;transition:.15s;text-align:center;}
+.servo-card .sc-btn:hover{border-color:var(--accent);color:var(--accent);}
+.servo-card .sc-btn.active{background:rgba(0,229,255,.15);border-color:var(--accent);color:var(--accent);}
+
+/* ===== CONNECT TAB ===== */
+#tab-connect{overflow-y:auto;flex-direction:column;}
+#conn-header-bar{
+  display:flex;align-items:center;justify-content:center;
+  padding:14px 24px;background:var(--panel);border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+#conn-header-inner{
+  display:flex;align-items:center;justify-content:space-between;
+  max-width:900px;width:100%;
+}
+.conn-status-block{display:flex;align-items:center;gap:12px;}
+.csb-dot{width:12px;height:12px;border-radius:50%;background:var(--muted);transition:.3s;}
+.csb-dot.connected{background:var(--green);box-shadow:0 0 10px var(--green);}
+.csb-dot.connecting{background:var(--accent3);animation:pulse-dot 1s infinite;}
+.csb-dot.error{background:var(--red);box-shadow:0 0 10px var(--red);}
+@keyframes pulse-dot{0%,100%{opacity:1;}50%{opacity:.3;}}
+.csb-title{font-weight:700;font-size:.9rem;}
+.csb-sub{font-family:var(--mono);font-size:.65rem;color:var(--muted);margin-top:2px;}
+#conn-body{padding:24px;display:flex;flex-direction:column;gap:14px;max-width:900px;width:100%;margin:0 auto;}
+.conn-section{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.conn-section-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;background:var(--panel2);border-bottom:1px solid var(--border);
+}
+.conn-section-header .csh-title{font-weight:700;font-size:.82rem;display:flex;align-items:center;gap:8px;}
+.conn-section-header .csh-status{font-family:var(--mono);font-size:.65rem;}
+.conn-section-header .csh-status.ok{color:var(--green);}
+.conn-section-header .csh-status.err{color:var(--red);}
+.conn-section-header .csh-status.pending{color:var(--accent3);}
+.conn-section-body{padding:14px;}
+.conn-row{display:flex;gap:10px;align-items:center;margin-bottom:10px;}
+.conn-row:last-child{margin-bottom:0;}
+.conn-row label{font-family:var(--mono);font-size:.68rem;color:var(--muted);width:120px;flex-shrink:0;}
+.conn-row input{flex:1;background:var(--panel2);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.72rem;padding:6px 10px;border-radius:6px;}
+.conn-row input:focus{outline:none;border-color:var(--accent);}
+.conn-test-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+.conn-dot-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;}
+.conn-indicator{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.62rem;color:var(--muted);}
+.conn-indicator .ci-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);}
+.conn-indicator .ci-dot.ok{background:var(--green);}
+.conn-indicator .ci-dot.err{background:var(--red);}
+.conn-indicator .ci-dot.pending{background:var(--accent3);animation:pulse-dot 1s infinite;}
+.conn-log{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;max-height:120px;overflow-y:auto;font-family:var(--mono);font-size:.62rem;color:var(--muted);margin-top:8px;}
+.conn-log-line{padding:2px 0;}
+.conn-log-line.ok{color:var(--green);}
+.conn-log-line.err{color:var(--red);}
+.conn-log-line.info{color:var(--accent);}
+
+/* RIGHT PANEL */
+#right-panel{width:260px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+#right-panel.hidden{display:none;}
+.rp-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.rp-header h2{font-size:.85rem;font-weight:700;color:var(--accent);}
+.rp-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;}
+.rp-body{flex:1;overflow-y:auto;padding:12px;}
+.zone-item{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;cursor:pointer;transition:border-color .15s;}
+.zone-item:hover{border-color:var(--accent);}
+.zone-item .z-name{font-weight:700;font-size:.8rem;}
+.zone-item .z-meta{font-size:.65rem;color:var(--muted);font-family:var(--mono);margin-top:3px;}
+.zone-item .z-status{display:inline-block;margin-top:5px;font-family:var(--mono);font-size:.58rem;padding:1px 7px;border-radius:3px;}
+.z-status.clean{background:rgba(16,185,129,.15);color:var(--green);}
+.z-status.pending{background:rgba(245,158,11,.15);color:var(--accent3);}
+.z-status.active{background:rgba(0,229,255,.1);color:var(--accent);}
+.sched-item{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;}
+.sched-item .s-time{font-family:var(--mono);font-size:.75rem;color:var(--accent);font-weight:700;}
+.sched-item .s-zone{font-size:.78rem;margin-top:2px;}
+.sched-item .s-repeat{font-size:.62rem;color:var(--muted);font-family:var(--mono);margin-top:2px;}
+.rp-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:10px;}
+.rp-tab{flex:1;text-align:center;padding:7px;font-size:.7rem;font-weight:600;cursor:pointer;color:var(--muted);transition:.15s;}
+.rp-tab.active{color:var(--accent);border-bottom:2px solid var(--accent);}
+.rp-subtab{display:none;}
+.rp-subtab.active{display:block;}
+
+/* FLOATING CAM PANEL */
+#cam-panel{
+  position:fixed;bottom:80px;right:20px;
+  width:340px;background:var(--panel);border:1px solid var(--border);
+  border-radius:12px;overflow:hidden;z-index:200;
+  box-shadow:0 8px 40px rgba(0,0,0,.6);
+  display:none;
+}
+#cam-panel.visible{display:block;}
+#cam-panel-header{
+  padding:10px 14px;background:var(--panel2);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;cursor:move;user-select:none;
+}
+#cam-panel-header .cp-title{font-size:.8rem;font-weight:700;flex:1;}
+#cam-panel-header button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:2px 5px;}
+#cam-panel-header button:hover{color:var(--text);}
+#cam-tabs{display:flex;border-bottom:1px solid var(--border);}
+.cam-tab{flex:1;padding:7px;text-align:center;font-size:.7rem;font-weight:600;cursor:pointer;color:var(--muted);transition:.15s;}
+.cam-tab.active{color:var(--accent);border-bottom:2px solid var(--accent);}
+.cam-source{display:none;padding:10px;}
+.cam-source.active{display:block;}
+#webcam-video{width:100%;border-radius:6px;display:block;background:#000;max-height:200px;object-fit:cover;}
+.cam-source-wrap{position:relative;}
+#cam-status{font-family:var(--mono);font-size:.65rem;margin-top:6px;color:var(--muted);}
+.cam-url-row{display:flex;gap:6px;margin-bottom:8px;}
+.cam-url-row input{flex:1;background:var(--panel2);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.68rem;padding:5px 8px;border-radius:5px;}
+.cam-url-row input:focus{outline:none;border-color:var(--accent);}
+.cam-url-row button{background:var(--accent);color:#000;border:none;font-family:var(--font);font-weight:700;font-size:.7rem;padding:5px 10px;border-radius:5px;cursor:pointer;}
+#cam-det-tags{display:flex;flex-wrap:wrap;gap:5px;padding:8px 10px;border-top:1px solid var(--border);}
+.det-tag{font-family:var(--mono);font-size:.6rem;padding:2px 8px;border-radius:4px;background:rgba(0,229,255,.1);color:var(--accent);}
+.cam-meta-row{display:flex;gap:10px;padding:5px 10px;font-family:var(--mono);font-size:.62rem;color:var(--muted);border-top:1px solid var(--border);}
+.snap-btn{background:var(--panel2);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:.7rem;font-weight:600;padding:4px 10px;border-radius:5px;cursor:pointer;}
+.snap-btn:hover{border-color:var(--accent);}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--panel);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:var(--muted);}
+
+/* Toast */
+#toast{
+  position:fixed;top:60px;right:16px;z-index:999;
+  font-family:var(--mono);font-size:.72rem;
+  background:var(--panel2);border:1px solid var(--accent);color:var(--accent);
+  padding:8px 16px;border-radius:8px;
+  opacity:0;transform:translateY(-8px);transition:all .3s;pointer-events:none;
+}
+#toast.show{opacity:1;transform:translateY(0);}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="logo">🫧 OmniScrub <span>v2.5</span></div>
+  <div class="status-row">
+    <div class="status-pill" id="pill-socket"><div class="dot"></div> <span id="pill-socket-txt">Disconnected</span></div>
+    <div class="status-pill" id="pill-camera"><div class="dot"></div> <span id="pill-camera-txt">Camera Off</span></div>
+    <div class="status-pill" id="pill-aibrick"><div class="dot"></div> <span id="pill-aibrick-txt">AI Off</span></div>
+  </div>
+  <div class="toolbar-btns">
+    <button class="tbtn primary" onclick="startScrub()">▶ Start Scrub</button>
+    <button class="tbtn danger" onclick="stopScrub()">⏹ Stop</button>
+    <button class="tbtn" onclick="toggleCamPanel()">📹 Camera</button>
+    <button class="tbtn" onclick="toggleRightPanel()">⊞ Zones</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="nav-section">Navigation</div>
+    <div class="nav-item active" onclick="showTab('dashboard')" id="nav-dashboard">
+      <span class="nav-icon">⊞</span> Dashboard
+    </div>
+    <div class="nav-item" onclick="showTab('map')" id="nav-map">
+      <span class="nav-icon">🗺</span> Map
+    </div>
+    <div class="nav-item" onclick="showTab('vision')" id="nav-vision">
+      <span class="nav-icon">👁</span> Vision <span class="badge" id="vision-badge">0</span>
+    </div>
+    <div class="nav-item" onclick="showTab('history')" id="nav-history">
+      <span class="nav-icon">📋</span> History
+    </div>
+    <div class="nav-item" onclick="showTab('admin')" id="nav-admin">
+      <span class="nav-icon">⚙</span> Admin
+    </div>
+    <div class="nav-item" onclick="showTab('connect')" id="nav-connect">
+      <span class="nav-icon">📶</span> Connect
+    </div>
+
+    <div class="bot-summary">
+      <div class="bot-card">
+        <div class="name" id="bot-name-display">SCRUBBOT-01</div>
+        <div class="stats">
+          <div class="stat">Mode: <b id="bot-mode">IDLE</b></div>
+          <div class="stat">Speed: <b id="bot-speed-disp">50%</b></div>
+          <div class="stat">Area: <b id="bot-area">0 m²</b></div>
+          <div class="stat">Uptime: <b id="bot-uptime">00:00</b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="content">
+
+    <!-- ===== DASHBOARD ===== -->
+    <div class="tab-pane active" id="tab-dashboard">
+      <!-- Stat cards -->
+      <div class="dash-row r3">
+        <div class="dcard">
+          <div class="card-title">🧹 Area Cleaned</div>
+          <div class="big-val" id="d-area">0</div>
+          <div class="big-label">m² today</div>
+          <div class="prog-bar"><div class="prog-fill" id="d-area-bar" style="width:0%"></div></div>
+          <div class="delta up" id="d-area-delta">▲ 0% of target</div>
+        </div>
+        <div class="dcard">
+          <div class="card-title">🚧 Obstacles</div>
+          <div class="big-val" id="d-obstacles">0</div>
+          <div class="big-label">detected today</div>
+          <div class="prog-bar"><div class="prog-fill danger" id="d-obs-bar" style="width:0%"></div></div>
+          <div class="delta down" id="d-obs-delta">0 avoided, 0 errors</div>
+        </div>
+        <div class="dcard">
+          <div class="card-title">⏱ Session Time</div>
+          <div class="big-val" id="d-session">00:00</div>
+          <div class="big-label">current session</div>
+          <div class="prog-bar"><div class="prog-fill" id="d-ses-bar" style="width:0%"></div></div>
+          <div class="delta" id="d-ses-eta">Not running</div>
+        </div>
+      </div>
+
+      <!-- Map + camera -->
+      <div class="dash-row r-main">
+        <div class="dcard">
+          <div class="card-title">🗺 Live Floor Map</div>
+          <div id="minimap-canvas"><canvas id="mini-canvas"></canvas></div>
+          <div style="display:flex;gap:10px;margin-top:8px;font-family:var(--mono);font-size:.62rem;color:var(--muted);">
+            <span>🟦 Bot</span><span>🟩 Clean</span><span>🟥 Obstacle</span><span>⬜ Pending</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="dcard" style="flex:1;">
+            <div class="card-title" style="justify-content:space-between;">
+              📹 AIBrick Camera
+              <span id="dash-cam-status" style="font-family:var(--mono);font-size:.6rem;color:var(--muted);">port 4913</span>
+            </div>
+            <div id="dash-cam-wrap">
+              <div class="cam-placeholder" id="dash-cam-placeholder">
+                <div>📷 Connect stream in 📶 tab</div>
+                <button onclick="showTab('connect')">Go to Connect</button>
+              </div>
+              <div class="iframe-scale-wrap" id="dash-cam-scale-wrap" style="display:none;height:100%;position:absolute;inset:0;">
+                <iframe id="dash-cam-iframe"
+                  title="AIBrick Camera"
+                  frameborder="0">
+                </iframe>
+              </div>
+              <div style="position:absolute;inset:0;pointer-events:none;">
+                <div class="cam-corner tl"></div><div class="cam-corner tr"></div>
+                <div class="cam-corner bl"></div><div class="cam-corner br"></div>
+                <div class="cam-label">AIBrick</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Health + sensors + activity -->
+      <div class="dash-row r3">
+        <div class="dcard">
+          <div class="card-title">💻 System Health</div>
+          <div class="health-grid">
+            <div class="health-item"><div class="h-label">CPU</div><div class="h-val ok" id="h-cpu">--</div></div>
+            <div class="health-item"><div class="h-label">RAM</div><div class="h-val ok" id="h-ram">--</div></div>
+            <div class="health-item"><div class="h-label">Temp</div><div class="h-val warn" id="h-temp">--</div></div>
+            <div class="health-item"><div class="h-label">WiFi</div><div class="h-val ok" id="h-wifi">--</div></div>
+            <div class="health-item"><div class="h-label">Motor L</div><div class="h-val ok" id="h-motorl">--</div></div>
+            <div class="health-item"><div class="h-label">Motor R</div><div class="h-val ok" id="h-motorr">--</div></div>
+          </div>
+        </div>
+        <div class="dcard">
+          <div class="card-title">📡 Ultrasonic Sensors</div>
+          <div class="sensor-list">
+            <div class="sensor-row">
+              <div class="s-name">Front</div>
+              <div class="s-bar"><div class="s-fill" id="s-front" style="width:0%"></div></div>
+              <div class="s-val" id="sv-front">-- cm</div>
+            </div>
+            <div class="sensor-row">
+              <div class="s-name">Left</div>
+              <div class="s-bar"><div class="s-fill" id="s-left" style="width:0%"></div></div>
+              <div class="s-val" id="sv-left">-- cm</div>
+            </div>
+            <div class="sensor-row">
+              <div class="s-name">Right</div>
+              <div class="s-bar"><div class="s-fill" id="s-right" style="width:0%"></div></div>
+              <div class="s-val" id="sv-right">-- cm</div>
+            </div>
+          </div>
+        </div>
+        <div class="dcard">
+          <div class="card-title">📰 Activity Feed</div>
+          <div class="activity-feed" id="activity-feed">
+            <div class="activity-item">
+              <span class="a-icon">🔵</span>
+              <span class="a-time">Now</span>
+              <span class="a-text">System online, awaiting connection</span>
+              <span class="a-tag info">INFO</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Zone status -->
+      <div class="dash-row r4z">
+        <div class="dcard">
+          <div class="card-title">🏢 Room A</div>
+          <div class="big-val" style="font-size:1.4rem;color:var(--green)">Clean</div>
+          <div class="big-label">Last: 2h ago</div>
+          <div class="prog-bar"><div class="prog-fill ok" style="width:100%"></div></div>
+        </div>
+        <div class="dcard">
+          <div class="card-title">🏢 Room B</div>
+          <div class="big-val" style="font-size:1.4rem;color:var(--accent3)">Pending</div>
+          <div class="big-label">Scheduled: 3:00 PM</div>
+          <div class="prog-bar"><div class="prog-fill warn" style="width:40%"></div></div>
+        </div>
+        <div class="dcard">
+          <div class="card-title">🚪 Hallway</div>
+          <div class="big-val" style="font-size:1.4rem;color:var(--accent)">Active</div>
+          <div class="big-label">Bot cleaning now</div>
+          <div class="prog-bar"><div class="prog-fill" style="width:60%"></div></div>
+        </div>
+        <div class="dcard">
+          <div class="card-title">🍽 Cafeteria</div>
+          <div class="big-val" style="font-size:1.4rem;color:var(--red)">Dirty</div>
+          <div class="big-label">Needs cleaning</div>
+          <div class="prog-bar"><div class="prog-fill danger" style="width:5%"></div></div>
+        </div>
+      </div>
+    </div><!-- /dashboard -->
+
+    <!-- ===== MAP ===== -->
+    <div class="tab-pane" id="tab-map">
+      <canvas id="map-canvas"></canvas>
+
+      <!-- Left tool palette -->
+      <div id="map-tools">
+        <div class="map-tool-btn active" id="mt-select"  onclick="setMapTool('select')">↖<span class="tip">Select</span></div>
+        <div class="map-tool-sep"></div>
+        <div class="map-tool-btn" id="mt-wall"    onclick="setMapTool('wall')">✏️<span class="tip">Draw Wall</span></div>
+        <div class="map-tool-btn" id="mt-room"    onclick="setMapTool('room')">⬜<span class="tip">Draw Room</span></div>
+        <div class="map-tool-btn" id="mt-obstacle" onclick="setMapTool('obstacle')">🚧<span class="tip">Place Obstacle</span></div>
+        <div class="map-tool-btn" id="mt-erase"   onclick="setMapTool('erase')">🧹<span class="tip">Erase</span></div>
+        <div class="map-tool-sep"></div>
+        <div class="map-tool-btn" id="mt-waypoint" onclick="setMapTool('waypoint')">📍<span class="tip">Add Waypoint</span></div>
+        <div class="map-tool-btn" id="mt-path"    onclick="setMapTool('path')">〰️<span class="tip">Draw Path</span></div>
+        <div class="map-tool-sep"></div>
+        <div class="map-tool-btn" id="mt-scan"    onclick="runScan()">📡<span class="tip">Scan Room</span></div>
+        <div class="map-tool-btn" id="mt-reset"   onclick="resetMap()">↺<span class="tip">Reset Map</span></div>
+      </div>
+
+      <!-- Path panel (shown when path tool or waypoints exist) -->
+      <div id="path-panel">
+        <span style="color:var(--accent2);font-weight:700;">PATH</span>
+        <div id="path-waypoint-list"><span style="color:var(--muted);">No waypoints — click map to place</span></div>
+        <button class="tbtn primary" onclick="runPath()" style="font-size:.68rem;padding:4px 10px;">▶ Run Path</button>
+        <button class="tbtn" onclick="clearPath()" style="font-size:.68rem;padding:4px 10px;">🗑 Clear</button>
+        <button class="tbtn" onclick="reversePathDir()" style="font-size:.68rem;padding:4px 10px;">⇄ Reverse</button>
+      </div>
+
+      <!-- Top-right buttons -->
+      <div id="map-btns">
+        <button class="tbtn primary" onclick="startMapping()" id="btn-map-start">▶ Scan Room</button>
+        <button class="tbtn danger"  onclick="stopMapping()"  id="btn-map-stop"  style="display:none">⏹ Stop Scan</button>
+        <button class="tbtn" onclick="setMapTool('waypoint');document.getElementById('path-panel').classList.add('visible');">📍 Plan Path</button>
+        <button class="tbtn" onclick="exportMap()">💾 Export</button>
+      </div>
+
+      <!-- Bottom info bar -->
+      <div id="map-info">
+        <div class="mi">Bot: <span id="mi-pos">--</span></div>
+        <div class="mi">Heading: <span id="mi-heading">--</span></div>
+        <div class="mi">Coverage: <span id="mi-coverage">0%</span></div>
+        <div class="mi">Nodes: <span id="mi-nodes">0</span></div>
+        <div class="mi">Tool: <span id="mi-tool">SELECT</span></div>
+        <div class="mi">Waypoints: <span id="mi-waypoints">0</span></div>
+        <div class="mi" id="mi-click-hint" style="color:var(--accent2);">Click canvas to edit</div>
+      </div>
+    </div>
+
+    <!-- ===== VISION ===== -->
+    <div class="tab-pane" id="tab-vision">
+      <div id="vis-controls">
+        <span style="font-size:.8rem;font-weight:700;">Threshold:</span>
+        <input type="range" min="0" max="100" value="50" id="vis-thresh" oninput="filterDetections(this.value)"/>
+        <span id="vis-thresh-val" style="font-family:var(--mono);font-size:.7rem;">50%</span>
+        <button class="tbtn" onclick="clearDetections()">🗑 Clear</button>
+        <button class="tbtn primary" onclick="refreshDetections()">⟳ Refresh</button>
+      </div>
+      <div id="vision-grid"></div>
+      <div class="card-title" style="margin-top:14px;font-size:.65rem;font-family:var(--mono);">📋 Detection Log</div>
+      <div id="detection-log"></div>
+    </div>
+
+    <!-- ===== HISTORY ===== -->
+    <div class="tab-pane" id="tab-history">
+      <div class="hist-stats">
+        <div class="hist-stat-card"><div class="hsv" id="h-sessions">0</div><div class="hsl">Total Sessions</div></div>
+        <div class="hist-stat-card"><div class="hsv" id="h-total-area">0m²</div><div class="hsl">Total Area</div></div>
+        <div class="hist-stat-card"><div class="hsv" id="h-total-time">0m</div><div class="hsl">Total Runtime</div></div>
+        <div class="hist-stat-card"><div class="hsv" id="h-total-obs">0</div><div class="hsl">Obstacles Hit</div></div>
+      </div>
+      <div class="session-list" id="session-list">
+        <div style="color:var(--muted);font-size:.8rem;padding:20px;text-align:center;">No sessions yet. Start a scrub to record history.</div>
+      </div>
+    </div>
+
+    <!-- ===== ADMIN ===== -->
+    <div class="tab-pane" id="tab-admin">
+      <div id="admin-lock">
+        <div class="lock-icon">🔒</div>
+        <div style="font-weight:700;font-size:1rem;">Admin Access Required</div>
+        <div style="color:var(--muted);font-size:.8rem;">Enter password to continue</div>
+        <input type="password" id="admin-pw" placeholder="Enter admin password…" onkeydown="if(event.key==='Enter')unlockAdmin()"/>
+        <button class="tbtn primary" onclick="unlockAdmin()">Unlock</button>
+        <div id="admin-err" style="color:var(--red);font-size:.75rem;display:none;">Incorrect password</div>
+      </div>
+      <div id="admin-panel">
+        <div class="admin-section">
+          <h3>⚙ Bot Controls</h3>
+          <div class="ctrl-grid">
+            <div class="ctrl-btn go" onclick="startScrub()">▶ Start</div>
+            <div class="ctrl-btn stop-btn" onclick="stopScrub()">⏹ Stop</div>
+            <div class="ctrl-btn" onclick="pauseScrub()">⏸ Pause</div>
+            <div class="ctrl-btn" onclick="homeBot()">🏠 Home</div>
+          </div>
+        </div>
+        <div class="admin-section">
+          <h3>🕹 Manual Drive</h3>
+          <div class="dpad">
+            <div class="dpad-empty"></div>
+            <div class="dpad-btn" onclick="driveBot('forward')">▲</div>
+            <div class="dpad-empty"></div>
+            <div class="dpad-btn" onclick="driveBot('left')">◀</div>
+            <div class="dpad-btn" onclick="driveBot('stop')">⏹</div>
+            <div class="dpad-btn" onclick="driveBot('right')">▶</div>
+            <div class="dpad-empty"></div>
+            <div class="dpad-btn" onclick="driveBot('backward')">▼</div>
+            <div class="dpad-empty"></div>
+          </div>
+        </div>
+        <div class="admin-section">
+          <h3>🦾 Servos</h3>
+          <div class="servo-grid">
+            <div class="servo-card">
+              <div class="sc-name">MOP</div>
+              <div class="sc-btns">
+                <div class="sc-btn" onclick="sendCmd('mop','on')">ON</div>
+                <div class="sc-btn" onclick="sendCmd('mop','off')">OFF</div>
+              </div>
+            </div>
+            <div class="servo-card">
+              <div class="sc-name">VACUUM</div>
+              <div class="sc-btns">
+                <div class="sc-btn" onclick="sendCmd('vacuum','on')">ON</div>
+                <div class="sc-btn" onclick="sendCmd('vacuum','off')">OFF</div>
+              </div>
+            </div>
+            <div class="servo-card">
+              <div class="sc-name">SCOOP</div>
+              <div class="sc-btns">
+                <div class="sc-btn" onclick="sendCmd('scoop','open')">OPEN</div>
+                <div class="sc-btn" onclick="sendCmd('scoop','close')">CLOSE</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="admin-section">
+          <h3>🛠 Settings</h3>
+          <div class="form-row"><label>Bot Name</label><input type="text" id="bot-name-input" value="SCRUBBOT-01" onchange="updateBotName()"/></div>
+          <div class="form-row"><label>Speed (%)</label><input type="range" min="10" max="100" value="50" id="speed-slider" oninput="updateSpeed(this.value)"/><span id="speed-val" style="font-family:var(--mono);font-size:.72rem;width:35px;">50%</span></div>
+          <div class="form-row"><label>Obstacle Dist (cm)</label><input type="number" value="20" min="5" max="60" id="obs-dist"/></div>
+          <div class="form-row"><label>New Password</label><input type="password" id="new-pw" placeholder="Leave blank to keep current"/></div>
+          <button class="tbtn primary" onclick="saveSettings()">💾 Save</button>
+          <button class="tbtn danger" onclick="lockAdmin()" style="margin-left:8px;">🔒 Lock</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== CONNECT ===== -->
+    <div class="tab-pane" id="tab-connect">
+      <div id="conn-header-bar">
+        <div id="conn-header-inner">
+          <div class="conn-status-block">
+            <div class="csb-dot" id="csb-dot"></div>
+            <div>
+              <div class="csb-title" id="csb-title">Not Connected</div>
+              <div class="csb-sub" id="csb-sub">Configure connection below</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="tbtn primary" onclick="autoDiscover()">🔍 Auto-Discover</button>
+            <button class="tbtn" onclick="disconnectAll()">✕ Disconnect All</button>
+          </div>
+        </div>
+      </div>
+      <div id="conn-body">
+
+        <!-- Socket.IO / App Lab WebUI -->
+        <div class="conn-section">
+          <div class="conn-section-header">
+            <div class="csh-title">🔌 Socket.IO — App Lab WebUI</div>
+            <div class="csh-status pending" id="sio-status">Disconnected</div>
+          </div>
+          <div class="conn-section-body">
+            <div class="conn-row">
+              <label>Host URL</label>
+              <input type="text" id="sio-url" value="" placeholder="auto (same origin)"/>
+            </div>
+            <div class="conn-test-row">
+              <button class="tbtn primary" onclick="connectSocketIO()">Connect</button>
+              <button class="tbtn" onclick="disconnectSocketIO()">Disconnect</button>
+            </div>
+            <div class="conn-dot-row">
+              <div class="conn-indicator"><div class="ci-dot" id="ci-sio"></div>Socket.IO</div>
+              <div class="conn-indicator"><div class="ci-dot" id="ci-sensor"></div>Sensor stream</div>
+              <div class="conn-indicator"><div class="ci-dot" id="ci-map"></div>Map data</div>
+            </div>
+            <div class="conn-log" id="sio-log"><div class="conn-log-line">Waiting for connection…</div></div>
+          </div>
+        </div>
+
+        <!-- AIBrick camera stream -->
+        <div class="conn-section">
+          <div class="conn-section-header">
+            <div class="csh-title">🎥 AIBrick Camera Stream</div>
+            <div class="csh-status" id="cam-conn-status">Not connected</div>
+          </div>
+          <div class="conn-section-body">
+            <div style="font-family:var(--mono);font-size:.68rem;color:var(--muted);margin-bottom:10px;">
+              Live video is served by the AIBrick on port 4913. Auto-detected from current hostname.
+            </div>
+            <div class="conn-row">
+              <label>Stream URL</label>
+              <input type="text" id="aibrick-url" placeholder="auto"/>
+            </div>
+            <div class="conn-test-row">
+              <button class="tbtn primary" onclick="connectAIBrick()">Connect Stream</button>
+              <button class="tbtn" onclick="disconnectAIBrick()">Disconnect</button>
+            </div>
+            <div id="aibrick-preview-wrap" style="margin-top:10px;display:none;">
+              <div class="iframe-scale-wrap" id="conn-cam-wrap" style="height:420px;">
+                <iframe id="aibrick-iframe"
+                  title="AIBrick Video Stream"
+                  frameborder="0">
+                </iframe>
+              </div>
+            </div>
+            <div class="conn-log" id="cam-log"><div class="conn-log-line">Click Connect Stream to load live video.</div></div>
+          </div>
+        </div>
+
+        <!-- Arduino Bridge -->
+        <div class="conn-section">
+          <div class="conn-section-header">
+            <div class="csh-title">🤖 Arduino Bridge (via App Lab)</div>
+            <div class="csh-status pending" id="bridge-status">Via Socket.IO</div>
+          </div>
+          <div class="conn-section-body">
+            <div style="font-family:var(--mono);font-size:.68rem;color:var(--muted);margin-bottom:10px;">
+              The Arduino MCU is reached through the App Lab Python bridge over Socket.IO. Connect Socket.IO above first.
+            </div>
+            <div class="conn-dot-row">
+              <div class="conn-indicator"><div class="ci-dot" id="ci-bridge"></div>Bridge</div>
+              <div class="conn-indicator"><div class="ci-dot" id="ci-sketch"></div>Sketch running</div>
+              <div class="conn-indicator"><div class="ci-dot" id="ci-servos"></div>Servos OK</div>
+            </div>
+            <div class="conn-test-row" style="margin-top:8px;">
+              <button class="tbtn" onclick="pingBridge()">Ping Bridge</button>
+              <button class="tbtn" onclick="sendCmd('get_state','')">Get State</button>
+            </div>
+            <div class="conn-log" id="bridge-log"><div class="conn-log-line">Awaiting Socket.IO connection.</div></div>
+          </div>
+        </div>
+
+        <!-- Connection summary -->
+        <div class="conn-section">
+          <div class="conn-section-header">
+            <div class="csh-title">📊 Connection Summary</div>
+          </div>
+          <div class="conn-section-body">
+            <div class="conn-dot-row" style="flex-wrap:wrap;gap:16px;">
+              <div class="conn-indicator"><div class="ci-dot" id="ci-sum-sio"></div>Socket.IO</div>
+              <div class="conn-indicator"><div class="ci-dot" id="ci-sum-cam"></div>Camera</div>
+              <div class="conn-indicator"><div class="ci-dot" id="ci-sum-ai"></div>AI Vision</div>
+              <div class="conn-indicator"><div class="ci-dot" id="ci-sum-bridge"></div>Bridge</div>
+              <div class="conn-indicator"><div class="ci-dot" id="ci-sum-sensor"></div>Sensors</div>
+              <div class="conn-indicator"><div class="ci-dot" id="ci-sum-map"></div>Map</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- RIGHT PANEL -->
+  <div id="right-panel" class="hidden">
+    <div class="rp-header">
+      <h2>Zone Manager</h2>
+      <button class="rp-close" onclick="toggleRightPanel()">✕</button>
+    </div>
+    <div class="rp-body">
+      <div class="rp-tabs">
+        <div class="rp-tab active" onclick="showRpTab('zones',this)">Zones</div>
+        <div class="rp-tab" onclick="showRpTab('schedule',this)">Schedule</div>
+      </div>
+      <div class="rp-subtab active" id="rp-zones">
+        <div class="zone-item"><div class="z-name">Room A</div><div class="z-meta">42m² · Priority: High</div><div class="z-status clean">CLEAN</div></div>
+        <div class="zone-item"><div class="z-name">Room B</div><div class="z-meta">38m² · Priority: Medium</div><div class="z-status pending">PENDING</div></div>
+        <div class="zone-item"><div class="z-name">Hallway</div><div class="z-meta">20m² · Priority: High</div><div class="z-status active">ACTIVE</div></div>
+        <div class="zone-item"><div class="z-name">Cafeteria</div><div class="z-meta">85m² · Priority: High</div><div class="z-status pending">PENDING</div></div>
+        <div class="zone-item"><div class="z-name">Office</div><div class="z-meta">30m² · Priority: Low</div><div class="z-status clean">CLEAN</div></div>
+        <button class="tbtn" style="width:100%;margin-top:8px;" onclick="toast('➕ Click map to place zone')">+ Add Zone</button>
+      </div>
+      <div class="rp-subtab" id="rp-schedule">
+        <div class="sched-item"><div class="s-time">08:00 AM</div><div class="s-zone">Room A + Hallway</div><div class="s-repeat">Repeat: Weekdays</div></div>
+        <div class="sched-item"><div class="s-time">12:30 PM</div><div class="s-zone">Cafeteria</div><div class="s-repeat">Repeat: Daily</div></div>
+        <div class="sched-item"><div class="s-time">03:00 PM</div><div class="s-zone">Room B + Office</div><div class="s-repeat">Repeat: Mon/Wed/Fri</div></div>
+        <button class="tbtn" style="width:100%;margin-top:8px;">+ Add Schedule</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- FLOATING CAM PANEL -->
+<div id="cam-panel">
+  <div id="cam-panel-header">
+    <span>📹</span>
+    <span class="cp-title">Live Camera</span>
+    <button onclick="expandCamPanel()" title="Expand">⤢</button>
+    <button onclick="toggleCamPanel()" title="Close">✕</button>
+  </div>
+  <div id="cam-tabs">
+    <div class="cam-tab active" onclick="showCamTab('aibrick',this)">🤖 AIBrick</div>
+    <div class="cam-tab" onclick="showCamTab('webcam',this)">💻 Webcam</div>
+  </div>
+  <div class="cam-source active" id="csrc-aibrick">
+    <div class="iframe-scale-wrap" id="float-cam-wrap" style="height:260px;">
+      <iframe id="float-aibrick-iframe"
+        title="AIBrick Stream"
+        frameborder="0">
+      </iframe>
+    </div>
+    <div id="aibrick-float-status" style="font-family:var(--mono);font-size:.65rem;color:var(--muted);margin-top:4px;">Loading stream…</div>
+  </div>
+  <div class="cam-source" id="csrc-webcam">
+    <div class="cam-source-wrap">
+      <video id="webcam-video" autoplay muted playsinline></video>
+      <canvas id="webcam-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
+    </div>
+    <div id="cam-status">Click Start to activate webcam…</div>
+    <div style="display:flex;gap:6px;margin-top:6px;">
+      <button class="tbtn" onclick="startWebcam()" style="flex:1;">▶ Start</button>
+      <button class="snap-btn" onclick="snapWebcam()">📸 Snap</button>
+    </div>
+  </div>
+  <div class="cam-meta-row">
+    <span id="cam-res">--</span>
+    <span id="cam-fps-float">-- fps</span>
+    <span id="cam-src-label">No source</span>
+  </div>
+  <div id="cam-det-tags">
+    <span style="font-size:.62rem;color:var(--muted);font-family:var(--mono);">No detections</span>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ================================================================
+// STATE
+// ================================================================
+let scrubRunning = false;
+let scrubStartTime = null;
+let sessionTimer = null;
+let botX = 0.5, botY = 0.5, botAngle = 0;
+let botSpeed = 50;
+let adminUnlocked = false;
+let adminPassword = 'scrubadmin';
+let botName = 'SCRUBBOT-01';
+let sessionCount = 0;
+let totalArea = 0, totalTime = 0, totalObs = 0;
+let currentTool = 'select';
+let camStream = null;
+let dashCamStream = null;
+let socket = null;
+let liveDetections = [];
+let mapNodes = [];
+let mapGrid = null;
+
+// ================================================================
+// SOCKET.IO — real connection to App Lab WebUI brick
+// ================================================================
+function connectSocketIO() {
+  const urlInput = document.getElementById('sio-url').value.trim();
+  const url = urlInput || window.location.origin;
+  sioLog('Connecting to ' + url + '…', 'info');
+  updateDot('ci-sio', 'pending');
+
+  try {
+    if (socket) { socket.disconnect(); }
+    socket = io(url, { transports: ['websocket', 'polling'], timeout: 8000 });
+
+    socket.on('connect', () => {
+      sioLog('✅ Connected: ' + socket.id, 'ok');
+      updateDot('ci-sio', 'ok');
+      updateDot('ci-sum-sio', 'ok');
+      setPill('pill-socket', 'online', 'Connected');
+      setCsb('connected', 'Socket.IO Connected', 'Receiving data from App Lab');
+      socket.emit('cmd', {type:'get_state'});
+      logActivity('🔌', 'Socket.IO connected to App Lab', 'ok');
+    });
+
+    socket.on('disconnect', () => {
+      sioLog('⚠ Disconnected', 'err');
+      updateDot('ci-sio', 'err');
+      updateDot('ci-sum-sio', 'err');
+      setPill('pill-socket', 'err', 'Disconnected');
+    });
+
+    socket.on('connect_error', (e) => {
+      sioLog('✗ Error: ' + e.message, 'err');
+      updateDot('ci-sio', 'err');
+      setPill('pill-socket', 'err', 'Error');
+    });
+
+    socket.on('sensor_update', (d) => {
+      applySensorData(d);
+      updateDot('ci-sensor', 'ok');
+      updateDot('ci-sum-sensor', 'ok');
+    });
+
+    socket.on('detections', (d) => {
+      applyDetections(d);
+      updateDot('ci-sum-ai', 'ok');
+    });
+
+    socket.on('map_update', (d) => {
+      if (d.cells) updateScanGrid(d);
+      if (d.grid)  { mapGrid = d.grid; }
+      updateDot('ci-map', 'ok');
+      updateDot('ci-sum-map', 'ok');
+      drawMiniMap();
+      const activeTab=document.querySelector('.tab-pane.active');
+      if (activeTab&&activeTab.id==='tab-map') initMap();
+    });
+
+    socket.on('map_node', (node) => {
+      mapNodes.push(node);
+      document.getElementById('mi-nodes').textContent = mapNodes.length;
+    });
+
+    socket.on('pos_update', (d) => {
+      if (d.x !== undefined) botX = d.x / 100;
+      if (d.y !== undefined) botY = d.y / 100;
+      if (d.heading !== undefined) botAngle = d.heading * Math.PI / 180;
+      document.getElementById('mi-pos').textContent = Math.round(d.x) + ',' + Math.round(d.y);
+      document.getElementById('mi-heading').textContent = Math.round(d.heading) + '°';
+    });
+
+    socket.on('mode_change', (d) => {
+      if (d.mode) {
+        document.getElementById('bot-mode').textContent = d.mode.toUpperCase();
+        logActivity('⚙', 'Mode: ' + d.mode, 'info');
+      }
+    });
+
+    socket.on('area_update', (d) => {
+      if (d.area_m2 !== undefined) {
+        document.getElementById('d-area').textContent = d.area_m2.toFixed(1);
+        document.getElementById('d-area-bar').style.width = Math.min(d.area_m2, 100) + '%';
+        document.getElementById('bot-area').textContent = d.area_m2.toFixed(1) + ' m²';
+      }
+    });
+
+    socket.on('servo_ack', (d) => {
+      updateDot('ci-servos', 'ok');
+      updateDot('ci-sum-bridge', 'ok');
+      bridgeLog('ACK: ' + JSON.stringify(d), 'ok');
+    });
+
+    socket.on('session_end', (d) => {
+      if (d.duration_sec !== undefined) {
+        logSession(d.duration_sec, d.area_m2 || 0, d.obstacles || 0);
+      }
+    });
+
+    socket.on('full_state', (d) => {
+      updateDot('ci-bridge', 'ok');
+      updateDot('ci-sketch', 'ok');
+      bridgeLog('State: ' + JSON.stringify(d), 'info');
+    });
+
+  } catch(e) {
+    sioLog('✗ ' + e.message, 'err');
+  }
+}
+
+function disconnectSocketIO() {
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+    sioLog('Manually disconnected.', 'info');
+  }
+}
+
+function sendCmd(type, value) {
+  if (!socket || !socket.connected) {
+    toast('⚠ Not connected to App Lab');
+    return;
+  }
+  socket.emit('cmd', { type, value });
+}
+
+function pingBridge() {
+  sendCmd('get_state', '');
+  bridgeLog('→ Sent ping (get_state)', 'info');
+}
+
+function autoDiscover() {
+  const origin = window.location.origin;
+  document.getElementById('sio-url').value = origin;
+  connectSocketIO();
+  toast('🔍 Trying ' + origin);
+}
+
+function disconnectAll() {
+  disconnectSocketIO();
+  disconnectAIBrick();
+  setCsb('', 'Not Connected', 'Configure connection below');
+  setPill('pill-socket', '', 'Disconnected');
+}
+
+// ================================================================
+// AIBRICK CAMERA STREAM
+// ================================================================
+// AIBrick stream URL — port 4913 /embed, same hostname as dashboard
+function getAIBrickStreamUrl() {
+  const manual = document.getElementById('aibrick-url').value.trim();
+  if (manual) return manual;
+  return `http://${window.location.hostname}:4913/embed`;
+}
+
+function connectAIBrick() {
+  const url = getAIBrickStreamUrl();
+  const iframe = document.getElementById('aibrick-iframe');
+  const wrap = document.getElementById('aibrick-preview-wrap');
+  camLog('Connecting to ' + url + '…', 'info');
+  wrap.style.display = 'block';
+  iframe.src = url;
+  iframe.onload = () => {
+    camLog('✅ Stream loaded: ' + url, 'ok');
+    setPill('pill-camera', 'online', 'Camera Active');
+    updateDot('ci-sum-cam', 'ok');
+    document.getElementById('cam-conn-status').textContent = 'Connected';
+    document.getElementById('cam-conn-status').className = 'csh-status ok';
+    scaleIframe('aibrick-iframe', AI_STREAM_W, AI_STREAM_H);
+    // Also load into dashboard card and floating panel
+    _loadAIBrickIframes(url);
+  };
+  iframe.onerror = () => {
+    camLog('✗ Cannot reach ' + url, 'err');
+    document.getElementById('cam-conn-status').textContent = 'Error';
+    document.getElementById('cam-conn-status').className = 'csh-status err';
+  };
+}
+
+function disconnectAIBrick() {
+  ['aibrick-iframe', 'dash-cam-iframe', 'float-aibrick-iframe'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.src = '';
+  });
+  document.getElementById('aibrick-preview-wrap').style.display = 'none';
+  document.getElementById('dash-cam-placeholder').style.display = 'flex';
+  const dw = document.getElementById('dash-cam-scale-wrap'); if(dw) dw.style.display = 'none';
+  setPill('pill-camera', '', 'Camera Off');
+  updateDot('ci-sum-cam', '');
+  camLog('Disconnected.', 'info');
+}
+
+// Scale an iframe so its content (sourceW x sourceH) fits inside its .iframe-scale-wrap container
+function scaleIframe(iframeId, sourceW, sourceH) {
+  const iframe = document.getElementById(iframeId);
+  if (!iframe) return;
+  const wrap = iframe.parentElement;
+  // Retry up to 10 times if container has no size yet (e.g. display:none parent)
+  let attempts = 0;
+  function doScale() {
+    const wrapW = wrap.clientWidth || wrap.offsetWidth;
+    const wrapH = wrap.clientHeight || wrap.offsetHeight;
+    if ((!wrapW || !wrapH) && attempts++ < 10) {
+      setTimeout(doScale, 100); return;
+    }
+    if (!wrapW || !wrapH) return;
+    const scale = Math.min(wrapW / sourceW, wrapH / sourceH);
+    iframe.style.width  = sourceW + 'px';
+    iframe.style.height = sourceH + 'px';
+    iframe.style.transform = 'scale(' + scale + ')';
+    iframe.style.left = ((wrapW - sourceW * scale) / 2) + 'px';
+    iframe.style.top  = ((wrapH - sourceH * scale) / 2) + 'px';
+  }
+  doScale();
+}
+
+// The Edge Impulse /embed page is 1024x768 (as used in the official example)
+const AI_STREAM_W = 1024, AI_STREAM_H = 768;
+
+function _loadAIBrickIframes(url) {
+  // Dashboard card iframe
+  const dashIframe = document.getElementById('dash-cam-iframe');
+  const placeholder = document.getElementById('dash-cam-placeholder');
+  const dashWrap = document.getElementById('dash-cam-scale-wrap');
+  dashIframe.src = url;
+  dashWrap.style.display = 'block';
+  placeholder.style.display = 'none';
+  dashIframe.onload = () => scaleIframe('dash-cam-iframe', AI_STREAM_W, AI_STREAM_H);
+
+  // Floating panel iframe
+  const floatIframe = document.getElementById('float-aibrick-iframe');
+  floatIframe.src = url;
+  floatIframe.onload = () => scaleIframe('float-aibrick-iframe', AI_STREAM_W, AI_STREAM_H);
+  document.getElementById('aibrick-float-status').textContent = '✅ ' + url;
+  document.getElementById('cam-src-label').textContent = 'AIBrick :4913';
+}
+
+// ================================================================
+// SENSOR DATA (from Socket.IO sensor_update)
+// ================================================================
+function applySensorData(d) {
+  const MAX_CM = 300;
+  if (d.f !== undefined) {
+    const pct = Math.min((d.f / MAX_CM) * 100, 100);
+    document.getElementById('s-front').style.width = pct + '%';
+    document.getElementById('sv-front').textContent = d.f + ' cm';
+    if (d.f < 20) document.getElementById('s-front').style.background = 'var(--red)';
+    else document.getElementById('s-front').style.background = 'var(--accent)';
+  }
+  if (d.l !== undefined) {
+    const pct = Math.min((d.l / MAX_CM) * 100, 100);
+    document.getElementById('s-left').style.width = pct + '%';
+    document.getElementById('sv-left').textContent = d.l + ' cm';
+  }
+  if (d.r !== undefined) {
+    const pct = Math.min((d.r / MAX_CM) * 100, 100);
+    document.getElementById('s-right').style.width = pct + '%';
+    document.getElementById('sv-right').textContent = d.r + ' cm';
+  }
+}
+
+// ================================================================
+// DETECTIONS (from Socket.IO detections event)
+// ================================================================
+function applyDetections(data) {
+  if (!data || !data.detections) return;
+  liveDetections = data.detections;
+  document.getElementById('vision-badge').textContent = liveDetections.length;
+  updateDetTags(liveDetections.map(d => d.label));
+  setPill('pill-aibrick', 'online', 'AI: ' + liveDetections.length + ' obj');
+  if (document.getElementById('tab-vision').classList.contains('active')) {
+    refreshDetections();
+  }
+}
+
+function refreshDetections() {
+  const grid = document.getElementById('vision-grid');
+  grid.innerHTML = '';
+  if (!liveDetections.length) {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:.8rem;padding:10px;">No detections yet.</div>';
+    return;
+  }
+  const thresh = parseInt(document.getElementById('vis-thresh').value);
+  const filtered = liveDetections.filter(d => (d.confidence || d.conf || 0) * 100 >= thresh);
+  document.getElementById('vision-badge').textContent = filtered.length;
+  filtered.forEach(d => {
+    const conf = Math.round((d.confidence || d.conf || 0) * 100);
+    const label = d.label || d.class || 'Unknown';
+    grid.insertAdjacentHTML('beforeend', `
+      <div class="vision-card">
+        <div class="vc-label">${label}</div>
+        <div class="vc-conf">${conf}% confidence</div>
+        <div class="vc-bar"><div class="vc-fill" style="width:${conf}%"></div></div>
+        <div class="vc-meta">bbox: [${(d.bbox||[]).map(v=>Math.round(v)).join(', ')}]</div>
+      </div>`);
+  });
+  logDetection(filtered);
+}
+
+function filterDetections(v) {
+  document.getElementById('vis-thresh-val').textContent = v + '%';
+  refreshDetections();
+}
+
+function clearDetections() {
+  liveDetections = [];
+  document.getElementById('vision-grid').innerHTML = '<div style="color:var(--muted);font-size:.8rem;padding:10px;">Cleared.</div>';
+  document.getElementById('cam-det-tags').innerHTML = '<span style="font-size:.62rem;color:var(--muted);font-family:var(--mono);">No detections</span>';
+  document.getElementById('vision-badge').textContent = '0';
+}
+
+function logDetection(dets) {
+  const log = document.getElementById('detection-log');
+  const now = new Date().toLocaleTimeString();
+  dets.forEach(d => {
+    const conf = Math.round((d.confidence || d.conf || 0) * 100);
+    const label = d.label || d.class || 'Unknown';
+    log.insertAdjacentHTML('afterbegin', `<div class="log-line">[${now}] <span>${label}</span> — ${conf}%</div>`);
+  });
+}
+
+function updateDetTags(labels) {
+  const el = document.getElementById('cam-det-tags');
+  if (!labels.length) { el.innerHTML = '<span style="font-size:.62rem;color:var(--muted);font-family:var(--mono);">No detections</span>'; return; }
+  el.innerHTML = labels.map(l => `<span class="det-tag">${l}</span>`).join('');
+}
+
+// ================================================================
+// MAP
+// ================================================================
+// ================================================================
+// MAP DATA
+// ================================================================
+// User-drawn rooms: {name, x, y, w, h (0-1 normalised), status, color}
+let userRooms    = [];
+// User-drawn walls: [{x1,y1,x2,y2}] normalised 0-1
+let userWalls    = [];
+// User obstacles: [{x,y}] normalised 0-1
+let userObstacles = [];
+// Sensor-scanned cells: 2d array [row][col] 0=unknown,1=free,2=wall
+let scanGrid     = Array.from({length:30},()=>new Array(40).fill(0));
+// Waypoints for path following: [{x,y}] normalised 0-1
+let waypoints    = [];
+// Currently active path index
+let pathIdx      = -1;
+// Drawing state
+let isDrawing    = false;
+let drawStart    = null;
+let mousePos     = {x:0,y:0};
+
+const ROOM_COLORS = ['rgba(0,229,255,0.12)','rgba(16,185,129,0.12)','rgba(124,58,237,0.12)',
+                     'rgba(245,158,11,0.10)','rgba(239,68,68,0.10)','rgba(99,102,241,0.12)'];
+const ROOM_BORDERS= ['#00e5ff','#10b981','#7c3aed','#f59e0b','#ef4444','#6366f1'];
+let roomColorIdx  = 0;
+
+// ================================================================
+// DRAW MAP
+// ================================================================
+function drawMap(canvas, small) {
+  const W = canvas.width, H = canvas.height;
+  if (!W || !H) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+
+  // Background grid
+  ctx.fillStyle = '#0d1117'; ctx.fillRect(0,0,W,H);
+  if (!small) {
+    ctx.strokeStyle = 'rgba(30,42,58,0.5)'; ctx.lineWidth = 0.5;
+    const gs = W/40;
+    for (let x=0;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for (let y=0;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  }
+
+  // Scanned cells from ultrasonic
+  const cw=W/40, ch=H/30;
+  scanGrid.forEach((row,ri)=>row.forEach((cell,ci)=>{
+    if (cell===0) return;
+    ctx.fillStyle = cell===2 ? 'rgba(239,68,68,0.35)' : 'rgba(0,229,255,0.07)';
+    ctx.fillRect(ci*cw, ri*ch, cw, ch);
+  }));
+
+  // User-drawn rooms
+  userRooms.forEach((r,i) => {
+    const rx=r.x*W,ry=r.y*H,rw=r.w*W,rh=r.h*H;
+    ctx.fillStyle = r.color || ROOM_COLORS[i%ROOM_COLORS.length];
+    ctx.fillRect(rx,ry,rw,rh);
+    ctx.strokeStyle = ROOM_BORDERS[i%ROOM_BORDERS.length];
+    ctx.lineWidth = 1.5; ctx.strokeRect(rx,ry,rw,rh);
+    if (!small && rw>40) {
+      ctx.fillStyle='#94a3b8'; ctx.font='600 11px Syne,sans-serif';
+      ctx.fillText(r.name||'Room',rx+6,ry+16);
+    }
+  });
+
+  // User walls
+  ctx.strokeStyle='#e2e8f0'; ctx.lineWidth=small?1.5:2.5;
+  userWalls.forEach(w=>{
+    ctx.beginPath();
+    ctx.moveTo(w.x1*W,w.y1*H);
+    ctx.lineTo(w.x2*W,w.y2*H);
+    ctx.stroke();
+  });
+
+  // Wall preview while drawing
+  if (!small && isDrawing && drawStart && currentTool==='wall') {
+    ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=2; ctx.setLineDash([5,5]);
+    ctx.beginPath(); ctx.moveTo(drawStart.x*W,drawStart.y*H);
+    ctx.lineTo(mousePos.x*W,mousePos.y*H); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // Room preview while drawing
+  if (!small && isDrawing && drawStart && currentTool==='room') {
+    const x0=Math.min(drawStart.x,mousePos.x)*W, y0=Math.min(drawStart.y,mousePos.y)*H;
+    const rw=Math.abs(mousePos.x-drawStart.x)*W, rh=Math.abs(mousePos.y-drawStart.y)*H;
+    ctx.fillStyle='rgba(0,229,255,0.08)'; ctx.fillRect(x0,y0,rw,rh);
+    ctx.strokeStyle='rgba(0,229,255,0.6)'; ctx.lineWidth=1.5; ctx.setLineDash([6,4]);
+    ctx.strokeRect(x0,y0,rw,rh); ctx.setLineDash([]);
+  }
+
+  // Sensor map nodes
+  if (mapNodes.length) {
+    mapNodes.forEach(n=>{
+      ctx.fillStyle='rgba(0,229,255,0.25)';
+      ctx.beginPath(); ctx.arc(n.x/100*W,n.y/100*H,small?2:3,0,Math.PI*2); ctx.fill();
+    });
+  }
+
+  // User obstacles
+  userObstacles.forEach(o=>{
+    ctx.fillStyle='rgba(239,68,68,0.7)';
+    ctx.beginPath(); ctx.arc(o.x*W,o.y*H,small?4:8,0,Math.PI*2); ctx.fill();
+    if (!small) {
+      ctx.strokeStyle='rgba(239,68,68,0.4)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.arc(o.x*W,o.y*H,14,0,Math.PI*2); ctx.stroke();
+    }
+  });
+
+  // Path line
+  if (!small && waypoints.length > 1) {
+    ctx.strokeStyle='rgba(124,58,237,0.7)'; ctx.lineWidth=2; ctx.setLineDash([8,4]);
+    ctx.beginPath();
+    waypoints.forEach((wp,i)=>{
+      if (i===0) ctx.moveTo(wp.x*W,wp.y*H);
+      else ctx.lineTo(wp.x*W,wp.y*H);
+    });
+    ctx.stroke(); ctx.setLineDash([]);
+    // Arrow heads
+    for (let i=1;i<waypoints.length;i++){
+      const a=waypoints[i-1],b=waypoints[i];
+      const mx=(a.x+b.x)/2*W, my=(a.y+b.y)/2*H;
+      const ang=Math.atan2((b.y-a.y)*H,(b.x-a.x)*W);
+      ctx.save(); ctx.translate(mx,my); ctx.rotate(ang);
+      ctx.fillStyle='rgba(124,58,237,0.9)';
+      ctx.beginPath(); ctx.moveTo(6,0); ctx.lineTo(-4,-4); ctx.lineTo(-4,4); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // Waypoints
+  waypoints.forEach((wp,i)=>{
+    const wx=wp.x*W, wy=wp.y*H, r=small?4:9;
+    const isActive = i===pathIdx;
+    ctx.fillStyle = isActive?'#f59e0b':'#7c3aed';
+    ctx.shadowColor = isActive?'#f59e0b':'#7c3aed';
+    ctx.shadowBlur = small?4:10;
+    ctx.beginPath(); ctx.arc(wx,wy,r,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0;
+    if (!small) {
+      ctx.fillStyle='#fff'; ctx.font='bold 9px DM Mono,monospace';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(i+1,wx,wy); ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    }
+  });
+
+  // Bot
+  const bx=botX*W, by=botY*H, br=small?5:10;
+  ctx.save(); ctx.translate(bx,by); ctx.rotate(botAngle);
+  ctx.fillStyle='#00e5ff'; ctx.shadowColor='#00e5ff'; ctx.shadowBlur=small?8:16;
+  ctx.beginPath(); ctx.arc(0,0,br,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#fff'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(0,-br); ctx.lineTo(0,-br-6); ctx.stroke();
+  ctx.shadowBlur=0; ctx.restore();
+
+  // Erase cursor preview
+  if (!small && currentTool==='erase') {
+    ctx.strokeStyle='rgba(239,68,68,0.6)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(mousePos.x*W,mousePos.y*H,16,0,Math.PI*2); ctx.stroke();
+  }
+}
+
+function initMap() {
+  const c = document.getElementById('map-canvas');
+  const parent = c.parentElement;
+  c.width = parent.clientWidth;
+  c.height = parent.clientHeight;
+  drawMap(c, false);
+  bindMapEvents(c);
+}
+
+function drawMiniMap() {
+  const c = document.getElementById('mini-canvas');
+  const wrap = document.getElementById('minimap-canvas');
+  c.width = wrap.clientWidth||200; c.height = 180;
+  drawMap(c, true);
+}
+
+// ================================================================
+// MAP CANVAS INTERACTION
+// ================================================================
+let mapEventsbound = false;
+function bindMapEvents(canvas) {
+  if (mapEventsbound) return;
+  mapEventsbound = true;
+
+  function canvasPos(e) {
+    const r = canvas.getBoundingClientRect();
+    const cx = (e.touches?e.touches[0].clientX:e.clientX) - r.left;
+    const cy = (e.touches?e.touches[0].clientY:e.clientY) - r.top;
+    return {x: cx/canvas.width, y: cy/canvas.height};
+  }
+
+  canvas.addEventListener('mousedown', e => {
+    const p = canvasPos(e);
+    isDrawing = true;
+    drawStart = p;
+    mousePos = p;
+
+    if (currentTool === 'waypoint') {
+      waypoints.push({x:p.x, y:p.y});
+      updateWaypointUI();
+      drawMap(canvas, false);
+      return;
+    }
+    if (currentTool === 'obstacle') {
+      userObstacles.push({x:p.x, y:p.y});
+      drawMap(canvas, false);
+      return;
+    }
+    if (currentTool === 'erase') {
+      eraseAt(p, canvas);
+      return;
+    }
+    if (currentTool === 'path') {
+      waypoints.push({x:p.x, y:p.y});
+      document.getElementById('path-panel').classList.add('visible');
+      updateWaypointUI();
+      drawMap(canvas, false);
+      return;
+    }
+  });
+
+  canvas.addEventListener('mousemove', e => {
+    mousePos = canvasPos(e);
+    if (!isDrawing) {
+      // Update cursor hint
+      if (currentTool==='erase'||currentTool==='wall'||currentTool==='room') drawMap(canvas,false);
+      return;
+    }
+    if (currentTool==='wall'||currentTool==='room') drawMap(canvas,false);
+    if (currentTool==='erase') eraseAt(mousePos, canvas);
+  });
+
+  canvas.addEventListener('mouseup', e => {
+    if (!isDrawing) return;
+    const p = canvasPos(e);
+    isDrawing = false;
+
+    if (currentTool==='wall') {
+      const dx=Math.abs(p.x-drawStart.x), dy=Math.abs(p.y-drawStart.y);
+      if (dx>0.01||dy>0.01) {
+        userWalls.push({x1:drawStart.x,y1:drawStart.y,x2:p.x,y2:p.y});
+      }
+      drawMap(canvas,false);
+    }
+    if (currentTool==='room') {
+      const x=Math.min(drawStart.x,p.x), y=Math.min(drawStart.y,p.y);
+      const w=Math.abs(p.x-drawStart.x), h=Math.abs(p.y-drawStart.y);
+      if (w>0.02&&h>0.02) {
+        const name = prompt('Room name?','Room '+(userRooms.length+1));
+        userRooms.push({name:name||('Room '+(userRooms.length+1)),x,y,w,h,status:'pending'});
+        roomColorIdx++;
+      }
+      drawMap(canvas,false);
+    }
+    drawStart = null;
+  });
+
+  canvas.addEventListener('mouseleave', ()=>{
+    isDrawing=false; drawStart=null;
+    drawMap(canvas,false);
+  });
+}
+
+function eraseAt(p, canvas) {
+  const thresh = 20/canvas.width;
+  // Erase obstacles within radius
+  userObstacles = userObstacles.filter(o=>
+    Math.hypot(o.x-p.x,o.y-p.y) > thresh*2
+  );
+  // Erase waypoints within radius
+  const before = waypoints.length;
+  waypoints = waypoints.filter(w=>
+    Math.hypot(w.x-p.x,w.y-p.y) > thresh*2
+  );
+  if (waypoints.length!==before) updateWaypointUI();
+  // Erase walls within radius
+  userWalls = userWalls.filter(w=>{
+    const dx=w.x2-w.x1, dy=w.y2-w.y1;
+    const len=Math.hypot(dx,dy)||0.001;
+    const t=Math.max(0,Math.min(1,((p.x-w.x1)*dx+(p.y-w.y1)*dy)/(len*len)));
+    const dist=Math.hypot(p.x-(w.x1+t*dx),p.y-(w.y1+t*dy));
+    return dist > thresh*1.5;
+  });
+  drawMap(canvas,false);
+}
+
+// ================================================================
+// TOOL SELECTION
+// ================================================================
+function setMapTool(t) {
+  currentTool = t;
+  document.querySelectorAll('.map-tool-btn').forEach(b=>b.classList.remove('active'));
+  const btn = document.getElementById('mt-'+t);
+  if (btn) btn.classList.add('active');
+  document.getElementById('mi-tool').textContent = t.toUpperCase();
+  const canvas = document.getElementById('map-canvas');
+  const cursors = {select:'default',wall:'crosshair',room:'crosshair',
+                   obstacle:'cell',erase:'cell',waypoint:'copy',path:'copy'};
+  canvas.style.cursor = cursors[t]||'crosshair';
+  if (t==='waypoint'||t==='path') {
+    document.getElementById('path-panel').classList.add('visible');
+  }
+}
+
+// ================================================================
+// PATH PLANNING
+// ================================================================
+function updateWaypointUI() {
+  const list = document.getElementById('path-waypoint-list');
+  document.getElementById('mi-waypoints').textContent = waypoints.length;
+  if (!waypoints.length) {
+    list.innerHTML='<span style="color:var(--muted);">No waypoints — click map to place</span>';
+    return;
+  }
+  list.innerHTML = waypoints.map((wp,i)=>
+    `<span class="wp-tag" onclick="removeWaypoint(${i})" title="Click to remove">
+      #${i+1} (${Math.round(wp.x*100)},${Math.round(wp.y*100)})
+    </span>`
+  ).join('');
+}
+
+function removeWaypoint(i) {
+  waypoints.splice(i,1);
+  updateWaypointUI();
+  drawMap(document.getElementById('map-canvas'),false);
+}
+
+function clearPath() {
+  waypoints=[];
+  pathIdx=-1;
+  updateWaypointUI();
+  document.getElementById('path-panel').classList.remove('visible');
+  drawMap(document.getElementById('map-canvas'),false);
+  toast('🗑 Path cleared');
+}
+
+function reversePathDir() {
+  waypoints.reverse();
+  updateWaypointUI();
+  drawMap(document.getElementById('map-canvas'),false);
+  toast('⇄ Path reversed');
+}
+
+let pathFollowing = false;
+let pathTimer = null;
+
+function runPath() {
+  if (!waypoints.length) { toast('⚠ No waypoints placed'); return; }
+  if (pathFollowing) { stopPath(); return; }
+  pathFollowing = true;
+  pathIdx = 0;
+  document.querySelector('#path-panel button').textContent = '⏹ Stop';
+  toast('▶ Following path — ' + waypoints.length + ' waypoints');
+  sendCmd('start_clean','');
+  followNextWaypoint();
+}
+
+function stopPath() {
+  pathFollowing = false;
+  pathIdx = -1;
+  if (pathTimer) clearTimeout(pathTimer);
+  document.querySelector('#path-panel button').textContent = '▶ Run Path';
+  sendCmd('drive','stop');
+  drawMap(document.getElementById('map-canvas'),false);
+  toast('⏹ Path stopped');
+}
+
+function followNextWaypoint() {
+  if (!pathFollowing || pathIdx>=waypoints.length) {
+    pathFollowing=false; pathIdx=-1;
+    document.querySelector('#path-panel button').textContent='▶ Run Path';
+    sendCmd('drive','stop');
+    toast('✅ Path complete');
+    drawMap(document.getElementById('map-canvas'),false);
+    return;
+  }
+  const wp = waypoints[pathIdx];
+  const dx = wp.x - botX, dy = wp.y - botY;
+  const targetAngle = Math.atan2(-dy, dx);
+  const dist = Math.hypot(dx,dy);
+
+  // Turn to face waypoint then drive
+  botAngle = targetAngle;
+  const dirAngle = Math.atan2(-dy,dx);
+  const diff = ((dirAngle - botAngle) + Math.PI*3) % (Math.PI*2) - Math.PI;
+
+  if (Math.abs(diff)>0.2) {
+    sendCmd('drive', diff>0?'left':'right');
+  } else {
+    sendCmd('drive','forward');
+  }
+
+  // Simulate movement toward waypoint
+  const speed = 0.008;
+  const stepTimer = setInterval(()=>{
+    const ndx=wp.x-botX, ndy=wp.y-botY;
+    const ndist=Math.hypot(ndx,ndy);
+    if (ndist<0.03) {
+      clearInterval(stepTimer);
+      pathIdx++;
+      sendCmd('drive','stop');
+      drawMap(document.getElementById('map-canvas'),false);
+      pathTimer=setTimeout(followNextWaypoint,400);
+      return;
+    }
+    botX=Math.max(0.02,Math.min(0.98,botX+ndx/ndist*speed));
+    botY=Math.max(0.02,Math.min(0.98,botY+ndy/ndist*speed));
+    botAngle=Math.atan2(-ndy,ndx);
+    drawMap(document.getElementById('map-canvas'),false);
+    drawMiniMap();
+  },50);
+}
+
+// ================================================================
+// SCAN / RESET / MAPPING
+// ================================================================
+function runScan() {
+  toast('📡 Scanning with sensors…');
+  sendCmd('start_map','');
+}
+
+function resetMap() {
+  botX=0.5; botY=0.5; botAngle=0;
+  mapNodes=[]; userWalls=[]; userRooms=[]; userObstacles=[]; waypoints=[];
+  scanGrid=Array.from({length:30},()=>new Array(40).fill(0));
+  pathIdx=-1; pathFollowing=false; mapEventsbound=false;
+  updateWaypointUI();
+  document.getElementById('mi-nodes').textContent='0';
+  document.getElementById('path-panel').classList.remove('visible');
+  const c=document.getElementById('map-canvas');
+  initMap();
+  toast('↺ Map reset');
+}
+
+function startMapping() {
+  sendCmd('start_map','');
+  document.getElementById('btn-map-start').style.display='none';
+  document.getElementById('btn-map-stop').style.display='';
+  toast('📡 Scanning room…');
+}
+
+function stopMapping() {
+  sendCmd('stop_map','');
+  document.getElementById('btn-map-start').style.display='';
+  document.getElementById('btn-map-stop').style.display='none';
+  toast('🗺 Scan complete — edit map with tools');
+}
+
+// Update scan grid from sensor data received via Socket.IO
+function updateScanGrid(data) {
+  if (!data.cells||!data.w||!data.h) return;
+  const W=data.w, H=data.h;
+  for (let r=0;r<H;r++) for (let c=0;c<W;c++) {
+    scanGrid[r][c] = data.cells[r*W+c]||0;
+  }
+  // Recalculate coverage
+  const total=W*H, scanned=scanGrid.flat().filter(v=>v>0).length;
+  document.getElementById('mi-coverage').textContent=Math.round(scanned/total*100)+'%';
+  initMap();
+}
+
+function exportMap() {
+  const data = {rooms:userRooms,walls:userWalls,obstacles:userObstacles,waypoints,scanGrid};
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='omniscrub-map-'+Date.now()+'.json'; a.click();
+  toast('💾 Map exported');
+}
+
+// ================================================================
+// TABS
+// ================================================================
+function showTab(name) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  if (name==='map') setTimeout(initMap, 50);
+  if (name==='vision') refreshDetections();
+  if (name==='dashboard') setTimeout(drawMiniMap, 50);
+}
+
+function toggleRightPanel() { document.getElementById('right-panel').classList.toggle('hidden'); }
+
+function showRpTab(name, el) {
+  document.querySelectorAll('.rp-subtab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.rp-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('rp-'+name).classList.add('active');
+  if (el) el.classList.add('active');
+}
+
+// ================================================================
+// SCRUB SESSION
+// ================================================================
+function startScrub() {
+  if (scrubRunning) return;
+  scrubRunning = true;
+  scrubStartTime = Date.now();
+  document.getElementById('bot-mode').textContent = 'RUNNING';
+  document.getElementById('d-ses-eta').textContent = 'Session running…';
+  sessionTimer = setInterval(updateSession, 1000);
+  sendCmd('start_clean','');
+  logActivity('▶','Started scrub session','ok');
+  toast('▶ Scrub started');
+  animateBot();
+}
+
+function stopScrub() {
+  if (!scrubRunning) return;
+  scrubRunning = false;
+  clearInterval(sessionTimer);
+  document.getElementById('bot-mode').textContent = 'IDLE';
+  document.getElementById('d-ses-eta').textContent = 'Session ended';
+  sendCmd('stop_clean','');
+  const dur = Math.floor((Date.now()-scrubStartTime)/1000);
+  const area = Math.floor(Math.random()*40+10);
+  logSession(dur, area, Math.floor(Math.random()*3));
+  toast('⏹ Session saved');
+}
+
+function pauseScrub() { document.getElementById('bot-mode').textContent='PAUSED'; toast('⏸ Paused'); }
+function homeBot() { toast('🏠 Returning to dock…'); document.getElementById('bot-mode').textContent='DOCKING'; sendCmd('drive','stop'); }
+
+let animFrame = null;
+function animateBot() {
+  if (!scrubRunning) return;
+  botAngle += 0.02;
+  botX = Math.max(0.05, Math.min(0.95, botX + Math.cos(botAngle)*0.002));
+  botY = Math.max(0.05, Math.min(0.95, botY + Math.sin(botAngle)*0.001));
+  const activeTab = document.querySelector('.tab-pane.active');
+  if (activeTab && activeTab.id==='tab-map') { const c=document.getElementById('map-canvas'); drawMap(c,false); }
+  if (activeTab && activeTab.id==='tab-dashboard') drawMiniMap();
+  animFrame = requestAnimationFrame(animateBot);
+}
+
+function updateSession() {
+  const elapsed = Math.floor((Date.now()-scrubStartTime)/1000);
+  const m = String(Math.floor(elapsed/60)).padStart(2,'0');
+  const s = String(elapsed%60).padStart(2,'0');
+  document.getElementById('d-session').textContent = m+':'+s;
+  document.getElementById('bot-uptime').textContent = m+':'+s;
+  const area = Math.floor(elapsed/10);
+  document.getElementById('d-area').textContent = area;
+  document.getElementById('d-area-bar').style.width = Math.min(area,100)+'%';
+  document.getElementById('bot-area').textContent = area+' m²';
+}
+
+function logSession(durSec, area, obs) {
+  sessionCount++;
+  totalArea += area; totalTime += Math.floor(durSec/60); totalObs += obs;
+  document.getElementById('h-sessions').textContent = sessionCount;
+  document.getElementById('h-total-area').textContent = totalArea+'m²';
+  document.getElementById('h-total-time').textContent = totalTime+'m';
+  document.getElementById('h-total-obs').textContent = totalObs;
+  const list = document.getElementById('session-list');
+  if (sessionCount===1) list.innerHTML='';
+  const m=Math.floor(durSec/60), s=durSec%60;
+  const now=new Date();
+  list.insertAdjacentHTML('afterbegin',`
+    <div class="session-card">
+      <div class="s-num">#${sessionCount}</div>
+      <div class="s-info">
+        <div class="s-date">${now.toLocaleDateString()} ${now.toLocaleTimeString()}</div>
+        <div class="s-meta">Duration: ${m}m ${s}s · Area: ${area}m² · Obstacles: ${obs}</div>
+        <div class="s-tags">
+          <span class="s-badge">${area}m²</span>
+          <span class="s-badge">${m}m ${s}s</span>
+          <span class="s-badge">${obs} obstacles</span>
+        </div>
+      </div>
+    </div>`);
+}
+
+// ================================================================
+// ADMIN
+// ================================================================
+function unlockAdmin() {
+  if (document.getElementById('admin-pw').value === adminPassword) {
+    adminUnlocked = true;
+    document.getElementById('admin-lock').style.display='none';
+    document.getElementById('admin-panel').style.display='flex';
+    toast('🔓 Admin unlocked');
+  } else {
+    document.getElementById('admin-err').style.display='block';
+    setTimeout(()=>document.getElementById('admin-err').style.display='none',2000);
+  }
+}
+function lockAdmin() {
+  adminUnlocked = false;
+  document.getElementById('admin-lock').style.display='flex';
+  document.getElementById('admin-panel').style.display='none';
+  document.getElementById('admin-pw').value='';
+  toast('🔒 Admin locked');
+}
+function updateBotName() {
+  botName = document.getElementById('bot-name-input').value;
+  document.getElementById('bot-name-display').textContent = botName;
+}
+function updateSpeed(v) {
+  botSpeed = parseInt(v);
+  document.getElementById('speed-val').textContent = v+'%';
+  document.getElementById('bot-speed-disp').textContent = v+'%';
+  sendCmd('speed', v);
+}
+function saveSettings() {
+  const np = document.getElementById('new-pw').value;
+  if (np.trim()) adminPassword = np.trim();
+  toast('💾 Settings saved');
+}
+function driveBot(dir) {
+  sendCmd('drive', dir);
+  const moves = {forward:[0,-0.02],backward:[0,0.02],left:[-0.02,0],right:[0.02,0],stop:[0,0]};
+  const [dx,dy] = moves[dir]||[0,0];
+  botX = Math.max(0.05,Math.min(0.95,botX+dx));
+  botY = Math.max(0.05,Math.min(0.95,botY+dy));
+  const activeTab=document.querySelector('.tab-pane.active');
+  if(activeTab&&activeTab.id==='tab-map'){drawMap(document.getElementById('map-canvas'),false);}
+  if(activeTab&&activeTab.id==='tab-dashboard') drawMiniMap();
+  toast('🕹 '+dir.toUpperCase());
+}
+
+// ================================================================
+// WEBCAM — floating panel
+// ================================================================
+function toggleCamPanel() {
+  const p = document.getElementById('cam-panel');
+  p.classList.toggle('visible');
+  if (p.classList.contains('visible')) {
+    const floatIframe = document.getElementById('float-aibrick-iframe');
+    if (!floatIframe.src || floatIframe.src === window.location.href) {
+      const url = 'http://' + window.location.hostname + ':4913/embed';
+      floatIframe.src = url;
+      floatIframe.onload = () => scaleIframe('float-aibrick-iframe', AI_STREAM_W, AI_STREAM_H);
+      document.getElementById('aibrick-float-status').textContent = 'Loading ' + url + '...';
+    }
+  }
+}
+function expandCamPanel() {
+  const p = document.getElementById('cam-panel');
+  p.style.width = p.style.width==='500px'?'340px':'500px';
+}
+function showCamTab(t, el) {
+  document.querySelectorAll('.cam-source').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.cam-tab').forEach(s=>s.classList.remove('active'));
+  document.getElementById('csrc-'+t).classList.add('active');
+  if (el) el.classList.add('active');
+}
+async function startWebcam() {
+  const vid = document.getElementById('webcam-video');
+  const status = document.getElementById('cam-status');
+  if (vid.srcObject) return;
+  if (!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) {
+    status.textContent='⚠ Camera API unavailable (use localhost or https://)';
+    status.style.color='var(--red)'; return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({video:{width:{ideal:640},height:{ideal:480}}});
+    vid.srcObject = stream; camStream = stream;
+    status.textContent='✅ Webcam active'; status.style.color='var(--green)';
+    const t=stream.getVideoTracks()[0];
+    if (t) { const s=t.getSettings(); document.getElementById('cam-res').textContent=(s.width||'?')+'×'+(s.height||'?'); }
+    document.getElementById('cam-src-label').textContent='WEBCAM';
+  } catch(e) {
+    const msgs={NotAllowedError:'Permission denied',NotFoundError:'No camera found',NotReadableError:'Camera in use'};
+    status.textContent='⚠ '+(msgs[e.name]||e.message); status.style.color='var(--red)';
+  }
+}
+function snapWebcam() {
+  const vid=document.getElementById('webcam-video');
+  if (!vid.srcObject){toast('⚠ No active stream');return;}
+  const c=document.createElement('canvas'); c.width=vid.videoWidth; c.height=vid.videoHeight;
+  c.getContext('2d').drawImage(vid,0,0);
+  const a=document.createElement('a'); a.download='snap-'+Date.now()+'.png'; a.href=c.toDataURL(); a.click();
+  toast('📸 Saved');
+}
+
+
+// Draggable cam panel
+(function(){
+  const el=document.getElementById('cam-panel');
+  const hdr=document.getElementById('cam-panel-header');
+  let drag=false,ox=0,oy=0;
+  hdr.addEventListener('mousedown',e=>{drag=true;ox=e.clientX-el.offsetLeft;oy=e.clientY-el.offsetTop;});
+  document.addEventListener('mousemove',e=>{if(drag){el.style.left=(e.clientX-ox)+'px';el.style.top=(e.clientY-oy)+'px';el.style.bottom='auto';el.style.right='auto';}});
+  document.addEventListener('mouseup',()=>drag=false);
+})();
+
+// ================================================================
+// ACTIVITY LOG
+// ================================================================
+function logActivity(icon, text, type) {
+  const feed=document.getElementById('activity-feed');
+  const now=new Date(); const t=now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+  feed.insertAdjacentHTML('afterbegin',`
+    <div class="activity-item">
+      <span class="a-icon">${icon}</span>
+      <span class="a-time">${t}</span>
+      <span class="a-text">${text}</span>
+      <span class="a-tag ${type||'info'}">${(type||'INFO').toUpperCase()}</span>
+    </div>`);
+}
+
+// ================================================================
+// CONNECTION LOG HELPERS
+// ================================================================
+function sioLog(msg, cls) {
+  const log = document.getElementById('sio-log');
+  log.insertAdjacentHTML('beforeend',`<div class="conn-log-line ${cls||''}">${msg}</div>`);
+  log.scrollTop = log.scrollHeight;
+  document.getElementById('sio-status').textContent = cls==='ok'?'Connected':cls==='err'?'Error':'Connecting…';
+  document.getElementById('sio-status').className = 'csh-status '+(cls==='ok'?'ok':cls==='err'?'err':'pending');
+}
+function camLog(msg, cls) {
+  const log = document.getElementById('cam-log');
+  log.insertAdjacentHTML('beforeend',`<div class="conn-log-line ${cls||''}">${msg}</div>`);
+  log.scrollTop = log.scrollHeight;
+}
+function bridgeLog(msg, cls) {
+  const log = document.getElementById('bridge-log');
+  log.insertAdjacentHTML('beforeend',`<div class="conn-log-line ${cls||''}">${msg}</div>`);
+  log.scrollTop = log.scrollHeight;
+}
+
+function updateDot(id, state) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'ci-dot' + (state ? ' '+state : '');
+}
+function setPill(id, cls, text) {
+  const pill = document.getElementById(id);
+  if (!pill) return;
+  pill.className = 'status-pill' + (cls ? ' '+cls : '');
+  const span = pill.querySelector('span');
+  if (span) span.textContent = text;
+}
+function setCsb(state, title, sub) {
+  const dot = document.getElementById('csb-dot');
+  dot.className = 'csb-dot' + (state ? ' '+state : '');
+  document.getElementById('csb-title').textContent = title;
+  document.getElementById('csb-sub').textContent = sub;
+}
+
+// ================================================================
+// TOAST
+// ================================================================
+function toast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ================================================================
+// INIT
+// ================================================================
+window.addEventListener('load', () => {
+  setTimeout(drawMiniMap, 100);
+  refreshDetections();
+  logActivity('🔵','Dashboard loaded — connect via 📶 tab','info');
+  logActivity('📡','Sensors waiting for connection','info');
+});
+
+window.addEventListener('resize', () => {
+  const activeTab=document.querySelector('.tab-pane.active');
+  if (activeTab&&activeTab.id==='tab-map') initMap();
+  if (activeTab&&activeTab.id==='tab-dashboard') drawMiniMap();
+  scaleIframe('aibrick-iframe', AI_STREAM_W, AI_STREAM_H);
+  scaleIframe('dash-cam-iframe', AI_STREAM_W, AI_STREAM_H);
+  scaleIframe('float-aibrick-iframe', AI_STREAM_W, AI_STREAM_H);
+});
+</script>
+</body>
+</html>

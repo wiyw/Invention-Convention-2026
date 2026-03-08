@@ -343,35 +343,6 @@ class WindowsAIBot:
             # Update camera feed
             if self.cap and self.cap.isOpened():
                 ret, frame = self.cap.read()
-                if ret and frame is not None:
-                    # Process frame for AI detection
-                    self.simulate_object_detection(frame)
-                    
-                    # Draw bounding boxes on frame
-                    for obj in self.detected_objects:
-                        x1, y1, x2, y2 = obj['bbox']
-                        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                        cv2.putText(frame, f"{obj['class']} {obj['confidence']:.2f}", 
-                                   (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                    
-                    # Convert to PIL Image and display
-                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    img = Image.fromarray(frame_rgb)
-                    img = img.resize((640, 480), Image.Resampling.LANCZOS)
-                    photo = ImageTk.PhotoImage(img)
-                    self.camera_label.configure(image=photo)
-                    self.camera_label.image = photo  # Keep reference
-                else:
-                    # Camera exists but can't read frame
-                    self.camera_label.configure(text="📷 Camera Error\n\nUnable to read from camera\nTry:\n• Click 'Switch Camera'\n• Restart application\n• Check camera connection", bg="orange")
-            else:
-                # Show error message if no camera
-                self.camera_label.configure(text="📷 Camera Not Available\n\nPlease check:\n• Camera is connected\n• No other apps using camera\n• Camera permissions in Windows settings\n\nClick 'Switch Camera' to try again", bg="darkred")
-            
-        try:
-            # Update camera feed
-            if self.cap and self.cap.isOpened():
-                ret, frame = self.cap.read()
                 if ret:
                     # Process frame for AI detection
                     self.simulate_object_detection(frame)
